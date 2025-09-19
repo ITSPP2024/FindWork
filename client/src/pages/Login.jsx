@@ -6,8 +6,7 @@ import '../styles/Login.css';
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    userType: 'empleado'
+    password: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,7 +33,7 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password, formData.userType);
+    const result = await login(formData.email, formData.password);
     
     if (result.success) {
       const dashboardPath = `/${result.user.tipo}/dashboard`;
@@ -62,32 +61,16 @@ const Login = () => {
         )}
 
         <form onSubmit={handleSubmit} className="login-form">
-          <div className="form-group">
-            <label htmlFor="userType">Tipo de Usuario</label>
-            <select
-              id="userType"
-              name="userType"
-              value={formData.userType}
-              onChange={handleChange}
-              required
-            >
-              <option value="empleado">Empleado</option>
-              <option value="empresa">Empresa</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
 
           <div className="form-group">
-            <label htmlFor="email">
-              {formData.userType === 'admin' ? 'Usuario' : 'Correo Electrónico'}
-            </label>
+            <label htmlFor="email">Correo Electrónico o Usuario</label>
             <input
-              type={formData.userType === 'admin' ? 'text' : 'email'}
+              type="text"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder={formData.userType === 'admin' ? 'admin' : 'tu@email.com'}
+              placeholder="tu@email.com o admin"
               required
             />
           </div>
@@ -115,7 +98,7 @@ const Login = () => {
         </form>
 
         <div className="login-footer">
-          <p>Accede con tus credenciales según tu tipo de usuario</p>
+          <p>El sistema detectará automáticamente tu tipo de usuario</p>
         </div>
       </div>
     </div>

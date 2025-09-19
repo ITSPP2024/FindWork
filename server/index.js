@@ -296,45 +296,34 @@ app.use('/uploads', authenticateToken, (req, res, next) => {
 
 // === RUTAS DE AUTENTICACIÓN ===
 
-// Login
-app.post('/api/login', (req, res) => {
-  const { email, password, userType } = req.body;
-
-  let query = '';
-  let table = '';
-
-  switch (userType) {
-    case 'empleado':
-      query = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email, "empleado" as tipo FROM candidatos WHERE Correo_Candidatos = ?';
-      break;
-    case 'empresa':
-      query = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email, "empresa" as tipo FROM empresa WHERE Correo_Empresa = ?';
-      break;
-    case 'admin':
-      query = 'SELECT idUsuarios as id, Tipo as nombre, Contraseña as password, "admin" as tipo FROM usuarios WHERE Tipo = "admin"';
-      break;
-    default:
-      return res.status(400).json({ error: 'Tipo de usuario inválido' });
-  }
+// Login con detección automática de tipo de usuario
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
 
   // Si MySQL no está disponible, usar datos simulados
   if (!isMySQL) {
     let user = null;
     
-    if (userType === 'empleado') {
-      user = datosSimulados.empleados.find(emp => emp.email === email);
-      // En modo simulado, requerir contraseña "demo" para consistencia
-      if (password !== 'demo' && password !== 'test') {
-        return res.status(401).json({ error: 'Contraseña incorrecta. Usa "demo" o "test"' });
-      }
-    } else if (userType === 'empresa') {
-      user = datosSimulados.empresas.find(emp => emp.email === email);
-      // En modo simulado, requerir contraseña "demo" para consistencia
-      if (password !== 'demo' && password !== 'test') {
-        return res.status(401).json({ error: 'Contraseña incorrecta. Usa "demo" o "test"' });
-      }
-    } else if (userType === 'admin' && email === 'admin' && password === 'admin') {
+    // Verificar si es admin
+    if (email === 'admin' && password === 'admin') {
       user = { id: 1, nombre: 'Administrador', email: 'admin', tipo: 'admin' };
+    } else {
+      // Buscar en empleados primero
+      user = datosSimulados.empleados.find(emp => emp.email === email);
+      if (user) {
+        user.tipo = 'empleado';
+      } else {
+        // Si no está en empleados, buscar en empresas
+        user = datosSimulados.empresas.find(emp => emp.email === email);
+        if (user) {
+          user.tipo = 'empresa';
+        }
+      }
+      
+      // Verificar contraseña para usuarios normales
+      if (user && password !== 'demo' && password !== 'test') {
+        return res.status(401).json({ error: 'Contraseña incorrecta. Usa "demo" o "test"' });
+      }
     }
     
     if (!user) {
@@ -363,30 +352,57 @@ app.post('/api/login', (req, res) => {
     });
   }
 
-  // Usar MySQL si está disponible
-  db.query(query, [email], async (err, results) => {
-    if (err) {
-      console.error('Error en login:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
+  // Función para buscar usuario en MySQL
+  const searchUser = async () => {
+    return new Promise((resolve, reject) => {
+      // Verificar si es admin
+      if (email === 'admin' && password === 'admin') {
+        return resolve({ id: 1, nombre: 'Administrador', email: 'admin', tipo: 'admin' });
+      }
 
-    if (results.length === 0) {
+      // Buscar primero en candidatos
+      const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email, "empleado" as tipo FROM candidatos WHERE Correo_Candidatos = ?';
+      
+      db.query(candidatoQuery, [email], (err, results) => {
+        if (err) {
+          return reject(err);
+        }
+        
+        if (results.length > 0) {
+          return resolve(results[0]);
+        }
+        
+        // Si no está en candidatos, buscar en empresas
+        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email, "empresa" as tipo FROM empresa WHERE Correo_Empresa = ?';
+        
+        db.query(empresaQuery, [email], (err, results) => {
+          if (err) {
+            return reject(err);
+          }
+          
+          if (results.length > 0) {
+            return resolve(results[0]);
+          }
+          
+          // Usuario no encontrado
+          resolve(null);
+        });
+      });
+    });
+  };
+
+  try {
+    const user = await searchUser();
+    
+    if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
-
-    const user = results[0];
     
     // IMPORTANTE: En producción con MySQL, aquí deberías verificar contraseñas hasheadas
     // Por ahora, para desarrollo local, se permite acceso sin verificación de contraseña
     // TODO: Implementar bcrypt.compare() cuando tengas contraseñas hasheadas en MySQL
     console.log('⚠️  ADVERTENCIA: Verificación de contraseña deshabilitada para desarrollo');
     console.log('💡 En producción, implementar verificación con bcrypt para seguridad');
-    
-    if (userType === 'admin') {
-      if (password !== 'admin') {
-        return res.status(401).json({ error: 'Credenciales inválidas' });
-      }
-    }
 
     const token = jwt.sign(
       { 
@@ -408,7 +424,10 @@ app.post('/api/login', (req, res) => {
         tipo: user.tipo
       }
     });
-  });
+  } catch (error) {
+    console.error('Error en login:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
 });
 
 // === RUTAS PARA EMPLEADOS ===
