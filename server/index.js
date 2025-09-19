@@ -417,6 +417,8 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
       Numero_Candidatos: '555-0123',
       Experiencia: 'Desarrollador con 3 años de experiencia en tecnologías web',
       Documentos: 'CV actualizado disponible',
+      descripcion: 'Estudiante apasionado por la tecnología con experiencia en desarrollo web',
+      foto_perfil: null,
       Observaciones: 'Candidato proactivo y con ganas de aprender'
     });
   }
@@ -439,6 +441,105 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     }
     
     res.json(results[0]);
+  });
+});
+
+// Actualizar perfil del empleado
+app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { id } = req.params;
+  const { nombre, descripcion, telefono, experiencia } = req.body;
+  
+  // Verificar que el usuario solo puede actualizar su propio perfil
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
+  }
+
+  if (!isMySQL) {
+    const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
+    if (empleadoIndex === -1) {
+      return res.status(404).json({ error: 'Perfil no encontrado' });
+    }
+    
+    // Actualizar datos simulados
+    datosSimulados.empleados[empleadoIndex] = {
+      ...datosSimulados.empleados[empleadoIndex],
+      nombre: nombre || datosSimulados.empleados[empleadoIndex].nombre,
+      descripcion: descripcion,
+      telefono: telefono,
+      experiencia: experiencia
+    };
+    
+    return res.json({ 
+      message: 'Perfil actualizado exitosamente',
+      empleado: datosSimulados.empleados[empleadoIndex]
+    });
+  }
+
+  const updateQuery = `
+    UPDATE candidatos 
+    SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?, Experiencia = ?
+    WHERE idCandidatos = ?
+  `;
+  
+  db.query(updateQuery, [nombre, descripcion, telefono, experiencia, id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando perfil:', err);
+      return res.status(500).json({ error: 'Error actualizando perfil' });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Perfil no encontrado' });
+    }
+    
+    res.json({ message: 'Perfil actualizado exitosamente' });
+  });
+});
+
+// Actualizar foto de perfil del empleado
+app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), upload.single('foto'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que el usuario solo puede actualizar su propia foto
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
+  }
+
+  const fotoPath = `/uploads/profiles/${req.file.filename}`;
+
+  if (!isMySQL) {
+    const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
+    if (empleadoIndex === -1) {
+      return res.status(404).json({ error: 'Perfil no encontrado' });
+    }
+    
+    datosSimulados.empleados[empleadoIndex].foto_perfil = fotoPath;
+    
+    return res.json({ 
+      message: 'Foto de perfil actualizada exitosamente',
+      foto_perfil: fotoPath
+    });
+  }
+
+  const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
+  
+  db.query(updateQuery, [fotoPath, id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando foto de perfil:', err);
+      return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Perfil no encontrado' });
+    }
+    
+    res.json({ 
+      message: 'Foto de perfil actualizada exitosamente',
+      foto_perfil: fotoPath
+    });
   });
 });
 
@@ -486,7 +587,9 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
       Nombre_Empresa: empresa.nombre,
       Correo_Empresa: empresa.email,
       Numero_Empresas: '555-0100',
-      Ubicacion: 'Ciudad de México'
+      Ubicacion: 'Ciudad de México',
+      descripcion: 'Empresa líder en tecnología con más de 10 años de experiencia',
+      foto_perfil: null
     });
   }
   
@@ -503,6 +606,105 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     }
     
     res.json(results[0]);
+  });
+});
+
+// Actualizar perfil de empresa
+app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (req, res) => {
+  const { id } = req.params;
+  const { nombre, descripcion, telefono, ubicacion } = req.body;
+  
+  // Verificar que la empresa solo puede actualizar su propio perfil
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
+  }
+
+  if (!isMySQL) {
+    const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
+    if (empresaIndex === -1) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    // Actualizar datos simulados
+    datosSimulados.empresas[empresaIndex] = {
+      ...datosSimulados.empresas[empresaIndex],
+      nombre: nombre || datosSimulados.empresas[empresaIndex].nombre,
+      descripcion: descripcion,
+      telefono: telefono,
+      ubicacion: ubicacion
+    };
+    
+    return res.json({ 
+      message: 'Perfil actualizado exitosamente',
+      empresa: datosSimulados.empresas[empresaIndex]
+    });
+  }
+
+  const updateQuery = `
+    UPDATE empresa 
+    SET Nombre_Empresa = ?, descripcion = ?, Telefono_Empresa = ?, Ubicacion = ?
+    WHERE idEmpresa = ?
+  `;
+  
+  db.query(updateQuery, [nombre, descripcion, telefono, ubicacion, id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando perfil empresa:', err);
+      return res.status(500).json({ error: 'Error actualizando perfil' });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    res.json({ message: 'Perfil actualizado exitosamente' });
+  });
+});
+
+// Actualizar foto de perfil de empresa
+app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'), upload.single('foto'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que la empresa solo puede actualizar su propia foto
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
+  }
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
+  }
+
+  const fotoPath = `/uploads/profiles/${req.file.filename}`;
+
+  if (!isMySQL) {
+    const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
+    if (empresaIndex === -1) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    datosSimulados.empresas[empresaIndex].foto_perfil = fotoPath;
+    
+    return res.json({ 
+      message: 'Foto de perfil actualizada exitosamente',
+      foto_perfil: fotoPath
+    });
+  }
+
+  const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
+  
+  db.query(updateQuery, [fotoPath, id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando foto de perfil empresa:', err);
+      return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+    }
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    res.json({ 
+      message: 'Foto de perfil actualizada exitosamente',
+      foto_perfil: fotoPath
+    });
   });
 });
 
