@@ -3,6 +3,7 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const emailService = require('./utils/emailService');
 require('dotenv').config();
 
 const app = express();
@@ -454,6 +455,303 @@ app.get('/api/admin/usuarios', authenticateToken, requireRole('admin'), (req, re
 });
 
 // Iniciar servidor
+// === RUTAS PARA APLICACIONES ===
+
+// Aplicar a una vacante
+app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), async (req, res) => {
+  const { puesto_id, carta_presentacion, salario_esperado, disponibilidad } = req.body;
+  const candidato_id = req.user.id;
+
+  if (!puesto_id) {
+    return res.status(400).json({ error: 'ID del puesto es requerido' });
+  }
+
+  if (!isMySQL) {
+    // Simulación para modo sin MySQL
+    const aplicacionId = Math.floor(Math.random() * 1000) + 100;
+    
+    // Enviar notificaciones por email incluso en modo simulado
+    try {
+      console.log(`📧 Enviando notificaciones de nueva aplicación (modo simulado)`);
+      
+      // Simular datos para notificación
+      const vacante = datosSimulados.vacantes.find(v => v.idPuestos == puesto_id);
+      const empresa = datosSimulados.empresas.find(e => e.nombre === vacante?.Nombre_Empresa);
+      
+      if (vacante && empresa) {
+        await emailService.sendNewApplicationEmail(
+          req.user.nombre, 
+          vacante.Tipo_Puesto, 
+          empresa.email
+        );
+        
+        await emailService.sendApplicationConfirmationEmail(
+          req.user.email, 
+          vacante.Tipo_Puesto, 
+          empresa.nombre
+        );
+        
+        console.log('✅ Notificaciones enviadas exitosamente');
+      }
+    } catch (emailError) {
+      console.error('⚠️  Error enviando emails (modo simulado):', emailError.message);
+      // No falla la aplicación por error de email
+    }
+    
+    return res.json({
+      message: 'Aplicación enviada exitosamente',
+      aplicacionId: aplicacionId,
+      estado: 'pendiente'
+    });
+  }
+
+  try {
+    // Verificar que no haya aplicado antes a este puesto
+    const checkQuery = 'SELECT idAplicacion FROM aplicaciones WHERE candidato_id = ? AND puesto_id = ?';
+    
+    db.query(checkQuery, [candidato_id, puesto_id], async (err, existing) => {
+      if (err) {
+        console.error('Error verificando aplicación existente:', err);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+
+      if (existing.length > 0) {
+        return res.status(400).json({ error: 'Ya has aplicado a esta vacante' });
+      }
+
+      // Crear nueva aplicación
+      const insertQuery = `
+        INSERT INTO aplicaciones (candidato_id, puesto_id, carta_presentacion, salario_esperado, disponibilidad) 
+        VALUES (?, ?, ?, ?, ?)
+      `;
+
+      db.query(insertQuery, [candidato_id, puesto_id, carta_presentacion, salario_esperado, disponibilidad], 
+        async (err, result) => {
+          if (err) {
+            console.error('Error creando aplicación:', err);
+            return res.status(500).json({ error: 'Error creando aplicación' });
+          }
+
+          // Obtener datos para notificación por email
+          const notifyQuery = `
+            SELECT 
+              c.Nombre_Candidatos as candidato_nombre,
+              p.Tipo_Puesto as puesto_titulo,
+              e.Correo_Empresa as empresa_email,
+              e.Nombre_Empresa as empresa_nombre,
+              c.Correo_Candidatos as candidato_email
+            FROM aplicaciones a
+            JOIN candidatos c ON a.candidato_id = c.idCandidatos
+            JOIN puestos p ON a.puesto_id = p.idPuestos
+            JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa
+            WHERE a.idAplicacion = ?
+          `;
+
+          db.query(notifyQuery, [result.insertId], async (err, notifyData) => {
+            if (!err && notifyData.length > 0) {
+              const data = notifyData[0];
+              
+              // Enviar emails de notificación
+              try {
+                await emailService.sendNewApplicationEmail(
+                  data.candidato_nombre, 
+                  data.puesto_titulo, 
+                  data.empresa_email
+                );
+                
+                await emailService.sendApplicationConfirmationEmail(
+                  data.candidato_email, 
+                  data.puesto_titulo, 
+                  data.empresa_nombre
+                );
+              } catch (emailError) {
+                console.error('Error enviando emails:', emailError);
+                // No falla la aplicación por error de email
+              }
+            }
+
+            res.json({
+              message: 'Aplicación enviada exitosamente',
+              aplicacionId: result.insertId,
+              estado: 'pendiente'
+            });
+          });
+        });
+    });
+
+  } catch (error) {
+    console.error('Error en aplicación:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener aplicaciones del empleado
+app.get('/api/empleado/aplicaciones/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que el usuario solo puede ver sus propias aplicaciones
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes ver tus propias aplicaciones' });
+  }
+
+  if (!isMySQL) {
+    // Datos simulados
+    const aplicacionesSimuladas = [
+      {
+        idAplicacion: 1,
+        puesto_titulo: 'Desarrollador Frontend',
+        empresa_nombre: 'Tech Solutions',
+        estado: 'pendiente',
+        fecha_aplicacion: '2024-01-15',
+        salario_esperado: 25000
+      },
+      {
+        idAplicacion: 2,
+        puesto_titulo: 'Diseñador UX/UI',
+        empresa_nombre: 'InnovaCorp',
+        estado: 'revisando',
+        fecha_aplicacion: '2024-01-10',
+        salario_esperado: 22000
+      }
+    ];
+    return res.json(aplicacionesSimuladas);
+  }
+
+  const query = `
+    SELECT 
+      a.idAplicacion,
+      a.estado,
+      a.fecha_aplicacion,
+      a.salario_esperado,
+      a.disponibilidad,
+      a.carta_presentacion,
+      p.Tipo_Puesto as puesto_titulo,
+      p.Salario,
+      p.Ubicacion,
+      e.Nombre_Empresa as empresa_nombre
+    FROM aplicaciones a
+    JOIN puestos p ON a.puesto_id = p.idPuestos
+    JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa
+    WHERE a.candidato_id = ?
+    ORDER BY a.fecha_aplicacion DESC
+  `;
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo aplicaciones:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    res.json(results);
+  });
+});
+
+// Obtener aplicaciones para una empresa
+app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que la empresa solo puede ver sus propias aplicaciones
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes ver aplicaciones de tu empresa' });
+  }
+
+  if (!isMySQL) {
+    // Datos simulados
+    const aplicacionesSimuladas = [
+      {
+        idAplicacion: 1,
+        candidato_nombre: 'Juan Pérez',
+        candidato_email: 'juan@email.com',
+        puesto_titulo: 'Desarrollador Frontend',
+        estado: 'pendiente',
+        fecha_aplicacion: '2024-01-15',
+        salario_esperado: 25000,
+        carta_presentacion: 'Me interesa mucho esta posición...'
+      }
+    ];
+    return res.json(aplicacionesSimuladas);
+  }
+
+  const query = `
+    SELECT 
+      a.idAplicacion,
+      a.estado,
+      a.fecha_aplicacion,
+      a.salario_esperado,
+      a.disponibilidad,
+      a.carta_presentacion,
+      a.notas_empresa,
+      c.Nombre_Candidatos as candidato_nombre,
+      c.Correo_Candidatos as candidato_email,
+      c.Numero_Candidatos as candidato_telefono,
+      p.Tipo_Puesto as puesto_titulo,
+      p.idPuestos as puesto_id
+    FROM aplicaciones a
+    JOIN candidatos c ON a.candidato_id = c.idCandidatos
+    JOIN puestos p ON a.puesto_id = p.idPuestos
+    WHERE p.empresa_idEmpresa = ?
+    ORDER BY a.fecha_aplicacion DESC
+  `;
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo aplicaciones de empresa:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    res.json(results);
+  });
+});
+
+// Actualizar estado de aplicación (solo empresas)
+app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole('empresa'), (req, res) => {
+  const { aplicacionId } = req.params;
+  const { estado, notas_empresa } = req.body;
+  
+  const estadosValidos = ['pendiente', 'revisando', 'entrevista', 'aceptado', 'rechazado'];
+  if (!estadosValidos.includes(estado)) {
+    return res.status(400).json({ error: 'Estado inválido' });
+  }
+
+  if (!isMySQL) {
+    return res.json({ message: 'Estado actualizado exitosamente (simulado)' });
+  }
+
+  // Verificar que la aplicación pertenece a una vacante de esta empresa
+  const verifyQuery = `
+    SELECT a.idAplicacion 
+    FROM aplicaciones a
+    JOIN puestos p ON a.puesto_id = p.idPuestos
+    WHERE a.idAplicacion = ? AND p.empresa_idEmpresa = ?
+  `;
+
+  db.query(verifyQuery, [aplicacionId, req.user.id], (err, results) => {
+    if (err) {
+      console.error('Error verificando aplicación:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    if (results.length === 0) {
+      return res.status(403).json({ error: 'No tienes permiso para modificar esta aplicación' });
+    }
+
+    const updateQuery = `
+      UPDATE aplicaciones 
+      SET estado = ?, notas_empresa = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+      WHERE idAplicacion = ?
+    `;
+
+    db.query(updateQuery, [estado, notas_empresa, aplicacionId], (err, result) => {
+      if (err) {
+        console.error('Error actualizando aplicación:', err);
+        return res.status(500).json({ error: 'Error actualizando aplicación' });
+      }
+
+      res.json({ message: 'Estado actualizado exitosamente' });
+    });
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });

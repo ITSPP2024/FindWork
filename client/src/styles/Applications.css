@@ -1,0 +1,211 @@
+/* ===================================
+   ESTILOS PARA SISTEMA DE APLICACIONES
+   =================================== */
+
+/* Navegación con tabs */
+.nav-links .nav-link.active {
+  background: #3b82f6;
+  color: white;
+  border-radius: 6px;
+}
+
+.nav-links button.nav-link {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  transition: all 0.2s;
+}
+
+.nav-links button.nav-link:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 6px;
+}
+
+/* Status badges para aplicaciones */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-reviewing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status-interview {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.status-accepted {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.status-default {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Lista de aplicaciones */
+.aplicaciones-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.aplicacion-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.aplicacion-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.aplicacion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.aplicacion-header h3 {
+  margin: 0 0 0.25rem 0;
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.empresa-name {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.aplicacion-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-row .label {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+.detail-row span:last-child {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.carta-presentacion {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.carta-presentacion h4 {
+  margin: 0 0 0.75rem 0;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.carta-presentacion p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Estado vacío de aplicaciones */
+.no-aplicaciones {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.no-aplicaciones p {
+  font-size: 1.1rem;
+  margin-bottom: 2rem;
+}
+
+.btn-primary {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .aplicacion-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  
+  .aplicacion-card {
+    padding: 1rem;
+  }
+  
+  .nav-links {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .nav-links button.nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+}

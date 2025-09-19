@@ -7,4 +7,80 @@ const api = axios.create({
   }
 });
 
+// Interceptor para agregar token a todas las requests
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// API para aplicaciones
+export const applicationsAPI = {
+  // Aplicar a una vacante
+  applyToJob: async (applicationData) => {
+    try {
+      const response = await api.post('/empleado/aplicar', applicationData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error aplicando a vacante:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error aplicando a la vacante' 
+      };
+    }
+  },
+
+  // Obtener aplicaciones del empleado
+  getEmployeeApplications: async (employeeId) => {
+    try {
+      const response = await api.get(`/empleado/aplicaciones/${employeeId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error obteniendo aplicaciones:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error cargando aplicaciones' 
+      };
+    }
+  },
+
+  // Obtener aplicaciones de una empresa
+  getCompanyApplications: async (companyId) => {
+    try {
+      const response = await api.get(`/empresa/aplicaciones/${companyId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error obteniendo aplicaciones de empresa:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error cargando aplicaciones' 
+      };
+    }
+  },
+
+  // Actualizar estado de aplicación (solo empresas)
+  updateApplicationStatus: async (applicationId, status, notes = '') => {
+    try {
+      const response = await api.put(`/empresa/aplicacion/${applicationId}`, {
+        estado: status,
+        notas_empresa: notes
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error actualizando aplicación:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error actualizando aplicación' 
+      };
+    }
+  }
+};
+
 export default api;
