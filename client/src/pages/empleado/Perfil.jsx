@@ -181,7 +181,7 @@ const EmpleadoPerfil = () => {
             </div>
 
             <div className="perfil-actions">
-              <button className="btn-primary">Editar Perfil</button>
+              <Link to="/empleado/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
               <button className="btn-secondary">Actualizar CV</button>
             </div>
           </div>

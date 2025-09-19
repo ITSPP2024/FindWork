@@ -104,7 +104,7 @@ const EmpresaPerfil = () => {
             </div>
 
             <div className="perfil-actions">
-              <button className="btn-primary">Editar Perfil</button>
+              <Link to="/empresa/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
               <button className="btn-secondary">Ver Estadísticas Detalladas</button>
             </div>
           </div>
