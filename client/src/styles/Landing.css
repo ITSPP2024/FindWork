@@ -16,8 +16,6 @@
 }
 
 .nav-container {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 0 2rem;
   display: flex;
   justify-content: space-between;
@@ -54,8 +52,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 4rem;
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 6rem 2rem;
   align-items: center;
   min-height: 70vh;
@@ -117,8 +113,7 @@
 }
 
 .features-container {
-  max-width: 1200px;
-  margin: 0 auto;
+  padding: 0 2rem;
   text-align: center;
 }
 
