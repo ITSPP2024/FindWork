@@ -176,7 +176,8 @@ db.ping((err) => {
 const datosSimulados = {
   empleados: [
     { id: 1, nombre: 'Juan Pérez', email: 'juan@email.com', tipo: 'empleado' },
-    { id: 2, nombre: 'María García', email: 'maria@email.com', tipo: 'empleado' }
+    { id: 2, nombre: 'María García', email: 'maria@email.com', tipo: 'empleado' },
+    { id: 3, nombre: 'Joshua', email: 'Joshua@gmail.com', tipo: 'empleado' }
   ],
   empresas: [
     { id: 1, nombre: 'Tech Solutions', email: 'admin@techsolutions.com', tipo: 'empresa' },

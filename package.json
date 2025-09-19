@@ -6,7 +6,8 @@
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
     "start:dev": "cross-env JWT_SECRET=findwork_dev_secret_2024_very_secure concurrently \"npm run server\" \"npm run client\"",
-    "server": "cross-env JWT_SECRET=findwork_dev_secret_2024_very_secure node server/index.js",
+    "server": "node server/index.js",
+    "server:dev": "cross-env JWT_SECRET=findwork_dev_secret_2024_very_secure node server/index.js",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build"
   },
