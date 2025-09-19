@@ -404,6 +404,46 @@
   cursor: pointer;
 }
 
+/* Estilos adicionales para filtros avanzados */
+.results-info {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background: rgba(66, 153, 225, 0.1);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: #4a5568;
+  text-align: center;
+}
+
+.filters-applied {
+  color: #4299e1;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Mejoras para la navegación con tabs */
+.nav-links button.nav-link {
+  background: none;
+  border: none;
+  color: #4a5568;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.nav-links button.nav-link:hover {
+  background: #edf2f7;
+  color: #2d3748;
+}
+
+.nav-links button.nav-link.active {
+  background: #4299e1;
+  color: white;
+}
+
 @media (max-width: 768px) {
   .dashboard-main {
     padding: 1rem;
@@ -433,5 +473,10 @@
   
   .admin-actions {
     grid-template-columns: 1fr;
+  }
+
+  .results-info {
+    font-size: 0.85rem;
+    padding: 6px 10px;
   }
 }

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api, { applicationsAPI, favoritesAPI } from '../../services/api';
 import ApplicationModal from '../../components/ApplicationModal';
+import AdvancedFilters from '../../components/AdvancedFilters';
 import '../../styles/Dashboard.css';
 import '../../styles/Applications.css';
 import '../../styles/Favorites.css';
@@ -17,6 +18,13 @@ const EmpleadoDashboard = () => {
   const [favoritos, setFavoritos] = useState([]);
   const [favoritesMap, setFavoritesMap] = useState({});
   const [activeTab, setActiveTab] = useState('vacantes');
+  const [filters, setFilters] = useState({
+    ubicacion: '',
+    tipoTrabajo: '',
+    experiencia: '',
+    fecha: '',
+    salary: { min: '', max: '' }
+  });
 
   useEffect(() => {
     fetchVacantes();
@@ -130,11 +138,80 @@ const EmpleadoDashboard = () => {
     return <span className={`status-badge ${config.class}`}>{config.text}</span>;
   };
 
-  const filteredVacantes = vacantes.filter(vacante =>
-    vacante.Tipo_Puesto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vacante.Nombre_Empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vacante.Ubicacion?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Función para aplicar todos los filtros
+  const applyFilters = (vacantes, searchTerm, filters) => {
+    return vacantes.filter(vacante => {
+      // Filtro de búsqueda por texto
+      const matchesSearch = !searchTerm || 
+        vacante.Tipo_Puesto?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vacante.Nombre_Empresa?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vacante.Ubicacion?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      // Filtro por ubicación (comparación flexible)
+      const matchesUbicacion = !filters.ubicacion || 
+        vacante.Ubicacion?.toLowerCase().includes(filters.ubicacion.toLowerCase());
+
+      // Filtro por tipo de trabajo
+      const matchesTipoTrabajo = !filters.tipoTrabajo || vacante.Horario === filters.tipoTrabajo;
+
+      // Filtro por experiencia (usar campo real)
+      const matchesExperiencia = !filters.experiencia || vacante.experiencia === filters.experiencia;
+
+      // Filtro por fecha (usar fecha real de creación)
+      const matchesFecha = !filters.fecha || (() => {
+        if (!vacante.fechaCreacion) return true; // Si no hay fecha, pasar filtro
+        
+        const ahora = new Date();
+        const fechaVacante = new Date(vacante.fechaCreacion);
+        const diffDays = (ahora - fechaVacante) / (1000 * 60 * 60 * 24);
+        
+        switch (filters.fecha) {
+          case 'today': return diffDays <= 1;
+          case 'week': return diffDays <= 7;
+          case 'month': return diffDays <= 30;
+          case '3months': return diffDays <= 90;
+          default: return true;
+        }
+      })();
+
+      // Filtro por rango de salario
+      const matchesSalario = (() => {
+        const salario = parseInt(vacante.Salario) || 0;
+        const min = parseInt(filters.salary?.min) || 0;
+        const max = parseInt(filters.salary?.max) || Infinity;
+        return salario >= min && salario <= max;
+      })();
+
+      return matchesSearch && matchesUbicacion && matchesTipoTrabajo && 
+             matchesExperiencia && matchesFecha && matchesSalario;
+    });
+  };
+
+  const filteredVacantes = applyFilters(vacantes, searchTerm, filters);
+
+  const handleFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      ubicacion: '',
+      tipoTrabajo: '',
+      experiencia: '',
+      fecha: '',
+      salary: { min: '', max: '' }
+    });
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (filters.ubicacion) count++;
+    if (filters.tipoTrabajo) count++;
+    if (filters.experiencia) count++;
+    if (filters.fecha) count++;
+    if (filters.salary?.min || filters.salary?.max) count++;
+    return count;
+  };
 
   return (
     <div className="dashboard">
@@ -180,8 +257,23 @@ const EmpleadoDashboard = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
                 />
+                <div className="results-info">
+                  {filteredVacantes.length} vacante{filteredVacantes.length !== 1 ? 's' : ''} encontrada{filteredVacantes.length !== 1 ? 's' : ''}
+                  {getActiveFiltersCount() > 0 && (
+                    <span className="filters-applied">
+                      ({getActiveFiltersCount()} filtro{getActiveFiltersCount() !== 1 ? 's' : ''} aplicado{getActiveFiltersCount() !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
+
+            {/* Filtros Avanzados */}
+            <AdvancedFilters 
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              onClearFilters={handleClearFilters}
+            />
 
             <div className="dashboard-content">
               {loading ? (

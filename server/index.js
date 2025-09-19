@@ -88,8 +88,96 @@ const datosSimulados = {
     { id: 2, nombre: 'InnovaCorp', email: 'hr@innovacorp.com', tipo: 'empresa' }
   ],
   vacantes: [
-    { idPuestos: 1, Tipo_Puesto: 'Desarrollador Frontend', Salario: 25000, Horario: '9:00-18:00', Ubicacion: 'Ciudad de México', Nombre_Empresa: 'Tech Solutions' },
-    { idPuestos: 2, Tipo_Puesto: 'Diseñador UX/UI', Salario: 22000, Horario: '9:00-17:00', Ubicacion: 'Guadalajara', Nombre_Empresa: 'InnovaCorp' }
+    { 
+      idPuestos: 1, 
+      Tipo_Puesto: 'Desarrollador Frontend', 
+      Salario: '45000', 
+      Horario: 'Tiempo completo', 
+      Ubicacion: 'Ciudad de México', 
+      Nombre_Empresa: 'Tech Solutions',
+      experiencia: 'Mid Level',
+      fechaCreacion: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() // Hace 8 días
+    },
+    { 
+      idPuestos: 2, 
+      Tipo_Puesto: 'Diseñador UX/UI', 
+      Salario: '38000', 
+      Horario: 'Tiempo completo', 
+      Ubicacion: 'Guadalajara', 
+      Nombre_Empresa: 'Creative Studio',
+      experiencia: 'Junior',
+      fechaCreacion: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // Hace 2 días
+    },
+    {
+      idPuestos: 3,
+      Tipo_Puesto: 'Desarrollador Backend',
+      Salario: '55000',
+      Horario: 'Tiempo completo',
+      Ubicacion: 'Monterrey',
+      Nombre_Empresa: 'DataCorp',
+      experiencia: 'Senior',
+      fechaCreacion: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString() // Hace 12 horas (hoy)
+    },
+    {
+      idPuestos: 4,
+      Tipo_Puesto: 'Analista de Datos',
+      Salario: '42000',
+      Horario: 'Medio tiempo',
+      Ubicacion: 'Ciudad de México',
+      Nombre_Empresa: 'Analytics Pro',
+      experiencia: 'Mid Level',
+      fechaCreacion: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // Hace 3 días
+    },
+    {
+      idPuestos: 5,
+      Tipo_Puesto: 'DevOps Engineer',
+      Salario: '65000',
+      Horario: 'Tiempo completo',
+      Ubicacion: 'Remoto',
+      Nombre_Empresa: 'CloudTech',
+      experiencia: 'Senior',
+      fechaCreacion: new Date(Date.now() - 0.2 * 24 * 60 * 60 * 1000).toISOString() // Hace 5 horas (hoy)
+    },
+    {
+      idPuestos: 6,
+      Tipo_Puesto: 'Desarrollador Mobile',
+      Salario: '48000',
+      Horario: 'Tiempo completo',
+      Ubicacion: 'Tijuana',
+      Nombre_Empresa: 'AppVentures',
+      experiencia: 'Mid Level',
+      fechaCreacion: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() // Hace 4 días
+    },
+    {
+      idPuestos: 7,
+      Tipo_Puesto: 'Practicante Desarrollo',
+      Salario: '15000',
+      Horario: 'Prácticas',
+      Ubicacion: 'Puebla',
+      Nombre_Empresa: 'StartupLab',
+      experiencia: 'Entry Level',
+      fechaCreacion: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000).toISOString() // Hace 2 horas (hoy)
+    },
+    {
+      idPuestos: 8,
+      Tipo_Puesto: 'Tech Lead',
+      Salario: '85000',
+      Horario: 'Tiempo completo',
+      Ubicacion: 'Mérida',
+      Nombre_Empresa: 'InnovaCorp',
+      experiencia: 'Lead',
+      fechaCreacion: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() // Hace 10 días
+    },
+    {
+      idPuestos: 9,
+      Tipo_Puesto: 'QA Engineer',
+      Salario: '40000',
+      Horario: 'Tiempo completo',
+      Ubicacion: 'Ciudad de México',
+      Nombre_Empresa: 'TestCorp',
+      experiencia: 'Mid Level',
+      fechaCreacion: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() // Hace 15 días
+    }
   ]
 };
 
