@@ -1,0 +1,69 @@
+PS C:\Users\Joshua\Downloads\Trabajos\Base de datos\FindWork> npm start
+
+> findwork-react@1.0.0 start
+> JWT_SECRET=findwork_dev_secret_2024_very_secure concurrently "npm run server" "npm run client" 
+
+"JWT_SECRET" no se reconoce como un comando interno o externo,
+programa o archivo por lotes ejecutable.
+PS C:\Users\Joshua\Downloads\Trabajos\Base de datos\FindWork> set JWT_SECRET=findwork_dev_secret_2024_very_secure
+>>
+PS C:\Users\Joshua\Downloads\Trabajos\Base de datos\FindWork> npm run server
+>>
+
+> findwork-react@1.0.0 server
+> node server/index.js
+
+node:internal/modules/cjs/loader:1228
+  throw err;
+  ^
+
+Error: Cannot find module 'multer'
+Require stack:
+- C:\Users\Joshua\Downloads\Trabajos\Base de datos\FindWork\server\index.js
+    at Function._resolveFilename (node:internal/modules/cjs/loader:1225:15)
+    at Function._load (node:internal/modules/cjs/loader:1055:27)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Module.require (node:internal/modules/cjs/loader:1311:12)
+    at require (node:internal/modules/helpers:136:16)
+    at Object.<anonymous> (C:\Users\Joshua\Downloads\Trabajos\Base de datos\FindWork\server\index.js:6:16)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Joshua\\Downloads\\Trabajos\\Base de datos\\FindWork\\server\\index.js'
+  ]
+}
+
+Node.js v22.14.0
+PS C:\Users\Joshua\Downloads\Trabajos\Base de datos\FindWork> npm run client
+>>
+
+> findwork-react@1.0.0 client
+> cd client && npm run dev
+
+
+> client@0.0.0 dev
+> vite
+
+
+  VITE v7.1.6  ready in 478 ms
+
+  ➜  Local:   http://localhost:5000/
+  ➜  Network: http://192.168.15.103:5000/
+  ➜  press h + enter to show help
+8:18:27 a.m. [vite] http proxy error: /api/login 
+AggregateError [ECONNREFUSED]:
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1712:7)    
+8:18:47 a.m. [vite] http proxy error: /api/login
+AggregateError [ECONNREFUSED]:
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1712:7) (x2)
+8:19:06 a.m. [vite] http proxy error: /api/login
+AggregateError [ECONNREFUSED]:
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1712:7) (x3)
+
+
+

@@ -55,12 +55,11 @@ db.connect((err) => {
 });
 
 // JWT Secret
-// Verificar que JWT_SECRET esté configurado en producción
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  console.error('❌ FATAL: JWT_SECRET no está configurado en las variables de entorno');
-  console.error('Para desarrollo local, puedes usar: JWT_SECRET=tu_clave_secreta_muy_segura npm start');
-  process.exit(1);
+// JWT Secret con fallback para desarrollo
+const JWT_SECRET = process.env.JWT_SECRET || 'findwork_dev_secret_2024_very_secure';
+if (!process.env.JWT_SECRET) {
+  console.log('⚠️  Usando JWT_SECRET por defecto para desarrollo');
+  console.log('💡 En producción, configura JWT_SECRET como variable de entorno');
 }
 
 // Configuración de Multer para diferentes tipos de archivos
