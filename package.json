@@ -4,7 +4,7 @@
   "description": "Sistema de búsqueda de trabajo con React y MySQL",
   "main": "server/index.js",
   "scripts": {
-    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "start": "JWT_SECRET=findwork_dev_secret_2024_very_secure concurrently \"npm run server\" \"npm run client\"",
     "server": "node server/index.js",
     "client": "cd client && npm run dev",
     "build": "cd client && npm run build"
