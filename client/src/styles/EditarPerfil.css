@@ -1,0 +1,382 @@
+.editar-perfil {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.editar-perfil h2 {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 28px;
+}
+
+.loading {
+  text-align: center;
+  font-size: 18px;
+  padding: 40px;
+  color: #666;
+}
+
+.mensaje {
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.mensaje.exito {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.mensaje.error {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.perfil-container {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 30px;
+  margin-bottom: 30px;
+}
+
+/* Sección de Foto de Perfil */
+.seccion-foto {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+}
+
+.seccion-foto h3 {
+  color: #495057;
+  margin-bottom: 20px;
+  font-size: 20px;
+}
+
+.foto-perfil-wrapper {
+  text-align: center;
+}
+
+.foto-actual {
+  margin-bottom: 20px;
+}
+
+.foto-perfil-preview {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #007bff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sin-foto {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: #e9ecef;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  color: #6c757d;
+  border: 2px dashed #ced4da;
+}
+
+.sin-foto span {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.sin-foto p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.archivo-input {
+  display: none;
+}
+
+.btn-cambiar-foto {
+  display: inline-block;
+  background: #007bff;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-cambiar-foto:hover {
+  background: #0056b3;
+  transform: translateY(-2px);
+}
+
+.info-archivo {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 8px;
+}
+
+/* Sección de Información */
+.seccion-informacion {
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+}
+
+.seccion-informacion h3 {
+  color: #495057;
+  margin-bottom: 25px;
+  font-size: 20px;
+}
+
+.formulario-perfil {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+}
+
+.campo label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.campo input,
+.campo textarea {
+  padding: 12px 16px;
+  border: 2px solid #ced4da;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+  background: white;
+}
+
+.campo input:focus,
+.campo textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.campo textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.btn-guardar {
+  background: #28a745;
+  color: white;
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.btn-guardar:hover {
+  background: #218838;
+  transform: translateY(-2px);
+}
+
+.btn-guardar:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Sección de Documentos */
+.seccion-documentos {
+  grid-column: 1 / -1;
+  background: #f8f9fa;
+  padding: 25px;
+  border-radius: 12px;
+  border: 2px solid #e9ecef;
+}
+
+.seccion-documentos h3 {
+  color: #495057;
+  margin-bottom: 25px;
+  font-size: 20px;
+}
+
+.subir-documento {
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.btn-subir-documento {
+  display: inline-block;
+  background: #17a2b8;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+.btn-subir-documento:hover {
+  background: #138496;
+  transform: translateY(-2px);
+}
+
+.lista-documentos {
+  display: grid;
+  gap: 15px;
+}
+
+.sin-documentos {
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+  padding: 40px;
+  background: white;
+  border-radius: 8px;
+  border: 2px dashed #ced4da;
+}
+
+.documento-item {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  border: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.documento-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.documento-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.documento-icono {
+  font-size: 32px;
+}
+
+.documento-detalles h4 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 16px;
+}
+
+.documento-detalles p {
+  margin: 2px 0;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.documento-acciones {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-descargar,
+.btn-eliminar {
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-descargar {
+  background: #007bff;
+  color: white;
+}
+
+.btn-descargar:hover {
+  background: #0056b3;
+}
+
+.btn-eliminar {
+  background: #dc3545;
+  color: white;
+}
+
+.btn-eliminar:hover {
+  background: #c82333;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .perfil-container {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .editar-perfil {
+    margin: 10px;
+    padding: 15px;
+  }
+  
+  .foto-perfil-preview,
+  .sin-foto {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .documento-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .documento-acciones {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .seccion-foto,
+  .seccion-informacion,
+  .seccion-documentos {
+    padding: 15px;
+  }
+  
+  .btn-cambiar-foto,
+  .btn-subir-documento {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  
+  .documento-acciones {
+    flex-direction: column;
+  }
+}

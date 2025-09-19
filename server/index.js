@@ -24,6 +24,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// Nota: Middleware de archivos se configurará después de definir authenticateToken
+
 // Nota: Archivos protegidos por autenticación - no serving estático público
 
 // Crear directorio uploads si no existe
@@ -277,6 +279,21 @@ const datosSimulados = {
   ]
 };
 
+// Servir archivos estáticos de forma segura (después de definir authenticateToken)
+app.use('/uploads', authenticateToken, (req, res, next) => {
+  // Solo permitir acceso a archivos del usuario autenticado
+  const filePath = req.path;
+  const userId = req.user.id;
+  
+  // Verificar que el archivo pertenece al usuario con patrón estricto
+  const userFilePattern = new RegExp(`^/(profiles|cvs|documents)/(empresa_)?${userId}_`);
+  if (userFilePattern.test(filePath)) {
+    next();
+  } else {
+    res.status(403).json({ error: 'Acceso denegado al archivo' });
+  }
+}, express.static(path.join(__dirname, 'uploads')));
+
 // === RUTAS DE AUTENTICACIÓN ===
 
 // Login
@@ -496,7 +513,7 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 });
 
 // Actualizar foto de perfil del empleado
-app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), upload.single('foto'), (req, res) => {
+app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), (req, res) => {
   const { id } = req.params;
   
   // Verificar que el usuario solo puede actualizar su propia foto
@@ -504,41 +521,71 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
     return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
   }
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
-  }
+  // Configurar multer específicamente para fotos de perfil
+  const profileUpload = multer({
+    storage: multer.diskStorage({
+      destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, 'uploads', 'profiles'));
+      },
+      filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, `${req.user.id}_profile_${uniqueSuffix}${ext}`);
+      }
+    }),
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
+      }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  }).single('foto');
 
-  const fotoPath = `/uploads/profiles/${req.file.filename}`;
-
-  if (!isMySQL) {
-    const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
-    if (empleadoIndex === -1) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
-    }
-    
-    datosSimulados.empleados[empleadoIndex].foto_perfil = fotoPath;
-    
-    return res.json({ 
-      message: 'Foto de perfil actualizada exitosamente',
-      foto_perfil: fotoPath
-    });
-  }
-
-  const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
-  
-  db.query(updateQuery, [fotoPath, id], (err, result) => {
+  profileUpload(req, res, function (err) {
     if (err) {
-      console.error('Error actualizando foto de perfil:', err);
-      return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+      return res.status(400).json({ error: err.message });
     }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
+
+    const fotoPath = `/uploads/profiles/${req.file.filename}`;
+
+    // Usar la variable global de conectividad
+
+    if (!isMySQL) {
+      const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
+      if (empleadoIndex === -1) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      
+      datosSimulados.empleados[empleadoIndex].foto_perfil = fotoPath;
+      
+      return res.json({ 
+        message: 'Foto de perfil actualizada exitosamente',
+        foto_perfil: fotoPath
+      });
+    }
+
+    const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
     
-    res.json({ 
-      message: 'Foto de perfil actualizada exitosamente',
-      foto_perfil: fotoPath
+    db.query(updateQuery, [fotoPath, id], (err, result) => {
+      if (err) {
+        console.error('Error actualizando foto de perfil:', err);
+        return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      
+      res.json({ 
+        message: 'Foto de perfil actualizada exitosamente',
+        foto_perfil: fotoPath
+      });
     });
   });
 });
@@ -661,7 +708,7 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
 });
 
 // Actualizar foto de perfil de empresa
-app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'), upload.single('foto'), (req, res) => {
+app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'), (req, res) => {
   const { id } = req.params;
   
   // Verificar que la empresa solo puede actualizar su propia foto
@@ -669,41 +716,71 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
     return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
   }
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
-  }
+  // Configurar multer específicamente para fotos de perfil de empresa
+  const profileUpload = multer({
+    storage: multer.diskStorage({
+      destination: function (req, file, cb) {
+        cb(null, path.join(__dirname, 'uploads', 'profiles'));
+      },
+      filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        cb(null, `empresa_${req.user.id}_profile_${uniqueSuffix}${ext}`);
+      }
+    }),
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
+      }
+    },
+    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+  }).single('foto');
 
-  const fotoPath = `/uploads/profiles/${req.file.filename}`;
-
-  if (!isMySQL) {
-    const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
-    if (empresaIndex === -1) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-    
-    datosSimulados.empresas[empresaIndex].foto_perfil = fotoPath;
-    
-    return res.json({ 
-      message: 'Foto de perfil actualizada exitosamente',
-      foto_perfil: fotoPath
-    });
-  }
-
-  const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
-  
-  db.query(updateQuery, [fotoPath, id], (err, result) => {
+  profileUpload(req, res, function (err) {
     if (err) {
-      console.error('Error actualizando foto de perfil empresa:', err);
-      return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+      return res.status(400).json({ error: err.message });
     }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
+
+    const fotoPath = `/uploads/profiles/${req.file.filename}`;
+
+    // Usar la variable global de conectividad
+
+    if (!isMySQL) {
+      const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
+      if (empresaIndex === -1) {
+        return res.status(404).json({ error: 'Empresa no encontrada' });
+      }
+      
+      datosSimulados.empresas[empresaIndex].foto_perfil = fotoPath;
+      
+      return res.json({ 
+        message: 'Foto de perfil actualizada exitosamente',
+        foto_perfil: fotoPath
+      });
+    }
+
+    const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
     
-    res.json({ 
-      message: 'Foto de perfil actualizada exitosamente',
-      foto_perfil: fotoPath
+    db.query(updateQuery, [fotoPath, id], (err, result) => {
+      if (err) {
+        console.error('Error actualizando foto de perfil empresa:', err);
+        return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+      }
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Empresa no encontrada' });
+      }
+      
+      res.json({ 
+        message: 'Foto de perfil actualizada exitosamente',
+        foto_perfil: fotoPath
+      });
     });
   });
 });
@@ -1467,11 +1544,19 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
       url: `/uploads/${req.body.fileType || 'documents'}/${req.file.filename}`
     };
 
-    // En datos simulados, agregar el archivo a la lista del usuario
-    if (!datosSimulados.archivos) {
-      datosSimulados.archivos = [];
+    // Usar la variable global de conectividad
+
+    if (!isMySQL) {
+      // En datos simulados, agregar el archivo a la lista del usuario
+      if (!datosSimulados.archivos) {
+        datosSimulados.archivos = [];
+      }
+      datosSimulados.archivos.push(fileInfo);
+    } else {
+      // TODO: Implementar inserción en MySQL para tabla archivos
+      // INSERT INTO archivos (nombre_original, nombre_archivo, tipo_archivo, tamano, ruta_archivo, usuario_id, usuario_tipo, tipo_documento)
+      // VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     }
-    datosSimulados.archivos.push(fileInfo);
 
     res.json({
       message: 'Archivo subido exitosamente',
@@ -1493,11 +1578,13 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
   }
 
   if (!isMySQL) {
-    const archivosUsuario = (datosSimulados.archivos || []).filter(archivo => archivo.userId == userId);
+    const archivosUsuario = (datosSimulados.archivos || []).filter(archivo => 
+      archivo.userId == userId && archivo.userId == req.user.id
+    );
     return res.json(archivosUsuario);
   }
 
-  // TODO: Implementar consulta MySQL para archivos
+  // TODO: Implementar consulta MySQL para archivos con verificación de ownership
   res.json([]);
 });
 
@@ -1511,7 +1598,7 @@ app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
     );
     
     if (!archivo) {
-      return res.status(404).json({ error: 'Archivo no encontrado' });
+      return res.status(404).json({ error: 'Archivo no encontrado o acceso denegado' });
     }
 
     try {
@@ -1533,7 +1620,7 @@ app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
     return;
   }
 
-  // TODO: Implementar descarga MySQL
+  // TODO: Implementar descarga MySQL con verificación de ownership
   res.status(500).json({ error: 'Funcionalidad no disponible aún' });
 });
 
@@ -1547,7 +1634,7 @@ app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
     );
     
     if (index === -1) {
-      return res.status(404).json({ error: 'Archivo no encontrado o sin permisos' });
+      return res.status(404).json({ error: 'Archivo no encontrado o acceso denegado' });
     }
 
     const archivo = datosSimulados.archivos[index];
@@ -1568,7 +1655,7 @@ app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
     return res.json({ message: 'Archivo eliminado exitosamente' });
   }
 
-  // TODO: Implementar eliminación MySQL
+  // TODO: Implementar eliminación MySQL con verificación de ownership
   res.status(500).json({ error: 'Funcionalidad no disponible aún' });
 });
 
