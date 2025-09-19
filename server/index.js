@@ -838,7 +838,7 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO vacantes (tipo_puesto, salario, horario, ubicacion, empresa_id) VALUES (?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)';
   
   db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, result) => {
     if (err) {
@@ -870,7 +870,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.json(vacantesEmpresa);
   }
   
-  const query = 'SELECT * FROM vacantes WHERE empresa_id = ? ORDER BY idpuestos DESC';
+  const query = 'SELECT * FROM puestos WHERE empresa_idEmpresa = ? ORDER BY idPuestos DESC';
   
   db.query(query, [id], (err, results) => {
     if (err) {
@@ -897,7 +897,7 @@ app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req
   const queries = {
     empleados: 'SELECT COUNT(*) as total FROM candidatos',
     empresas: 'SELECT COUNT(*) as total FROM empresa',
-    vacantes: 'SELECT COUNT(*) as total FROM puestos',
+    puestos: 'SELECT COUNT(*) as total FROM puestos',
     expedientes: 'SELECT COUNT(*) as total FROM expedientes'
   };
 
