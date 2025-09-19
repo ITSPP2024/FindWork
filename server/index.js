@@ -167,11 +167,45 @@ const requireRole = (role) => {
 // Datos simulados (se reemplazarán con MySQL cuando esté conectado)
 let isMySQL = false;
 
-// Verificar si MySQL está conectado
+// Verificar si MySQL está conectado y agregar columnas Tipo_Usuario
 db.ping((err) => {
   if (!err) {
     isMySQL = true;
     console.log('🔗 MySQL está disponible');
+    
+    // Agregar columna Tipo_Usuario a candidatos si no existe
+    db.query(`
+      ALTER TABLE candidatos 
+      ADD COLUMN IF NOT EXISTS Tipo_Usuario VARCHAR(50) DEFAULT 'empleado'
+    `, (err) => {
+      if (err) {
+        console.log('✅ Columna Tipo_Usuario ya existe en candidatos o error:', err.message);
+      } else {
+        console.log('✅ Columna Tipo_Usuario agregada a candidatos');
+        // Actualizar registros existentes
+        db.query(`UPDATE candidatos SET Tipo_Usuario = 'empleado' WHERE Tipo_Usuario IS NULL`, (err) => {
+          if (err) console.log('Error actualizando candidatos:', err.message);
+          else console.log('✅ Registros de candidatos actualizados');
+        });
+      }
+    });
+    
+    // Agregar columna Tipo_Usuario a empresa si no existe
+    db.query(`
+      ALTER TABLE empresa 
+      ADD COLUMN IF NOT EXISTS Tipo_Usuario VARCHAR(50) DEFAULT 'empresa'
+    `, (err) => {
+      if (err) {
+        console.log('✅ Columna Tipo_Usuario ya existe en empresa o error:', err.message);
+      } else {
+        console.log('✅ Columna Tipo_Usuario agregada a empresa');
+        // Actualizar registros existentes
+        db.query(`UPDATE empresa SET Tipo_Usuario = 'empresa' WHERE Tipo_Usuario IS NULL`, (err) => {
+          if (err) console.log('Error actualizando empresa:', err.message);
+          else console.log('✅ Registros de empresa actualizados');
+        });
+      }
+    });
   }
 });
 
@@ -362,7 +396,7 @@ app.post('/api/login', async (req, res) => {
       }
 
       // Buscar primero en candidatos
-      const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email, "empleado" as tipo FROM candidatos WHERE Correo_Candidatos = ?';
+      const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email, Tipo_Usuario as tipo FROM candidatos WHERE Correo_Candidatos = ?';
       
       db.query(candidatoQuery, [email], (err, results) => {
         if (err) {
@@ -374,7 +408,7 @@ app.post('/api/login', async (req, res) => {
         }
         
         // Si no está en candidatos, buscar en empresas
-        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email, "empresa" as tipo FROM empresa WHERE Correo_Empresa = ?';
+        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email, Tipo_Usuario as tipo FROM empresa WHERE Correo_Empresa = ?';
         
         db.query(empresaQuery, [email], (err, results) => {
           if (err) {
