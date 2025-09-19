@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2');
+const { Client } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -33,28 +33,21 @@ fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
 
-// Configuración de conexión a MySQL
-const db = mysql.createConnection({
-  host: 'localhost',
-  port: 3306,
-  user: 'root',
-  password: 'admin',
-  database: 'powerman'
+// Configuración de conexión a PostgreSQL
+const db = new Client({
+  connectionString: process.env.DATABASE_URL
 });
 
 // Conectar a la base de datos
-db.connect((err) => {
-  if (err) {
-    console.error('⚠️  Error conectando a MySQL:', err.message);
+db.connect()
+  .then(() => {
+    console.log('✅ Conectado a PostgreSQL database');
+  })
+  .catch((err) => {
+    console.error('⚠️  Error conectando a PostgreSQL:', err.message);
     console.log('💡 La aplicación funcionará con datos simulados.');
-    console.log('📋 Para conectar a tu MySQL local:');
-    console.log('   1. Asegúrate de que MySQL esté ejecutándose en tu computadora');
-    console.log('   2. Configura el acceso remoto en MySQL Workbench');
-    console.log('   3. Usa la IP de tu computadora en lugar de localhost');
     return;
-  }
-  console.log('✅ Conectado a MySQL database: powerman');
-});
+  });
 
 // JWT Secret
 // JWT Secret con fallback para desarrollo
@@ -164,50 +157,42 @@ const requireRole = (role) => {
   };
 };
 
-// Datos simulados (se reemplazarán con MySQL cuando esté conectado)
-let isMySQL = false;
+// Datos simulados (se reemplazarán con PostgreSQL cuando esté conectado)
+let isPostgreSQL = false;
 
-// Verificar si MySQL está conectado y agregar columnas Tipo_Usuario
-db.ping((err) => {
-  if (!err) {
-    isMySQL = true;
-    console.log('🔗 MySQL está disponible');
+// Verificar si PostgreSQL está conectado y agregar columnas Tipo_Usuario
+setTimeout(async () => {
+  try {
+    // Verificar si la conexión está disponible
+    await db.query('SELECT 1');
+    isPostgreSQL = true;
+    console.log('🔗 PostgreSQL está disponible');
     
     // Agregar columna Tipo_Usuario a candidatos si no existe
-    db.query(`
+    await db.query(`
       ALTER TABLE candidatos 
       ADD COLUMN IF NOT EXISTS Tipo_Usuario VARCHAR(50) DEFAULT 'empleado'
-    `, (err) => {
-      if (err) {
-        console.log('✅ Columna Tipo_Usuario ya existe en candidatos o error:', err.message);
-      } else {
-        console.log('✅ Columna Tipo_Usuario agregada a candidatos');
-        // Actualizar registros existentes
-        db.query(`UPDATE candidatos SET Tipo_Usuario = 'empleado' WHERE Tipo_Usuario IS NULL`, (err) => {
-          if (err) console.log('Error actualizando candidatos:', err.message);
-          else console.log('✅ Registros de candidatos actualizados');
-        });
-      }
-    });
+    `);
+    console.log('✅ Columna Tipo_Usuario verificada en candidatos');
+    
+    // Actualizar registros existentes
+    await db.query(`UPDATE candidatos SET Tipo_Usuario = 'empleado' WHERE Tipo_Usuario IS NULL`);
+    console.log('✅ Registros de candidatos actualizados');
     
     // Agregar columna Tipo_Usuario a empresa si no existe
-    db.query(`
+    await db.query(`
       ALTER TABLE empresa 
       ADD COLUMN IF NOT EXISTS Tipo_Usuario VARCHAR(50) DEFAULT 'empresa'
-    `, (err) => {
-      if (err) {
-        console.log('✅ Columna Tipo_Usuario ya existe en empresa o error:', err.message);
-      } else {
-        console.log('✅ Columna Tipo_Usuario agregada a empresa');
-        // Actualizar registros existentes
-        db.query(`UPDATE empresa SET Tipo_Usuario = 'empresa' WHERE Tipo_Usuario IS NULL`, (err) => {
-          if (err) console.log('Error actualizando empresa:', err.message);
-          else console.log('✅ Registros de empresa actualizados');
-        });
-      }
-    });
+    `);
+    console.log('✅ Columna Tipo_Usuario verificada en empresa');
+    
+    // Actualizar registros existentes
+    await db.query(`UPDATE empresa SET Tipo_Usuario = 'empresa' WHERE Tipo_Usuario IS NULL`);
+    console.log('✅ Registros de empresa actualizados');
+  } catch (err) {
+    console.log('⚠️ Error con PostgreSQL:', err.message);
   }
-});
+}, 1000);
 
 const datosSimulados = {
   empleados: [
@@ -341,7 +326,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   // Si MySQL no está disponible, usar datos simulados
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     let user = null;
     
     // Verificar si es admin
@@ -404,39 +389,35 @@ app.post('/api/login', async (req, res) => {
 
       // Buscar según el tipo de usuario seleccionado
       if (tipoUsuario === 'empleado') {
-        const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email FROM candidatos WHERE Correo_Candidatos = ?';
+        const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email FROM candidatos WHERE Correo_Candidatos = $1';
         
-        db.query(candidatoQuery, [email], (err, results) => {
-          if (err) {
-            return reject(err);
-          }
-          
-          if (results.length > 0) {
-            const user = results[0];
-            user.tipo = tipoUsuario; // Usar el tipo seleccionado
-            return resolve(user);
-          }
-          
-          // Usuario no encontrado
-          resolve(null);
-        });
+        db.query(candidatoQuery, [email])
+          .then(results => {
+            if (results.rows.length > 0) {
+              const user = results.rows[0];
+              user.tipo = tipoUsuario; // Usar el tipo seleccionado
+              return resolve(user);
+            }
+            
+            // Usuario no encontrado
+            resolve(null);
+          })
+          .catch(err => reject(err));
       } else if (tipoUsuario === 'empresa') {
-        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email FROM empresa WHERE Correo_Empresa = ?';
+        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email FROM empresa WHERE Correo_Empresa = $1';
         
-        db.query(empresaQuery, [email], (err, results) => {
-          if (err) {
-            return reject(err);
-          }
-          
-          if (results.length > 0) {
-            const user = results[0];
-            user.tipo = tipoUsuario; // Usar el tipo seleccionado
-            return resolve(user);
-          }
-          
-          // Usuario no encontrado
-          resolve(null);
-        });
+        db.query(empresaQuery, [email])
+          .then(results => {
+            if (results.rows.length > 0) {
+              const user = results.rows[0];
+              user.tipo = tipoUsuario; // Usar el tipo seleccionado
+              return resolve(user);
+            }
+            
+            // Usuario no encontrado
+            resolve(null);
+          })
+          .catch(err => reject(err));
       } else {
         // Tipo de usuario inválido
         reject(new Error('Tipo de usuario inválido'));
@@ -494,7 +475,7 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     return res.status(403).json({ error: 'Solo puedes ver tu propio perfil' });
   }
   
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const empleado = datosSimulados.empleados.find(emp => emp.id == id);
     if (!empleado) {
       return res.status(404).json({ error: 'Perfil no encontrado' });
@@ -515,22 +496,22 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
   const query = `
     SELECT c.*, e.Documentos, e.Fecha_Registro, e.Observaciones, e.Experiencia 
     FROM candidatos c 
-    LEFT JOIN expedientes e ON c.idCandidatos = e.candidatos_idCandidatos 
-    WHERE c.idCandidatos = ?
+    LEFT JOIN expedientes e ON c.idCandidatos = e.candidatos_id 
+    WHERE c.idCandidatos = $1
   `;
   
-  db.query(query, [id], (err, results) => {
-    if (err) {
+  db.query(query, [id])
+    .then(results => {
+      if (results.rows.length === 0) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      
+      res.json(results.rows[0]);
+    })
+    .catch(err => {
       console.error('Error obteniendo perfil:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
-    }
-    
-    res.json(results[0]);
-  });
+    });
 });
 
 // Actualizar perfil del empleado
@@ -543,7 +524,7 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
     if (empleadoIndex === -1) {
       return res.status(404).json({ error: 'Perfil no encontrado' });
@@ -566,22 +547,22 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 
   const updateQuery = `
     UPDATE candidatos 
-    SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?, Experiencia = ?
-    WHERE idCandidatos = ?
+    SET Nombre_Candidatos = $1, descripcion = $2, Numero_Candidatos = $3, Experiencia = $4
+    WHERE idCandidatos = $5
   `;
   
-  db.query(updateQuery, [nombre, descripcion, telefono, experiencia, id], (err, result) => {
-    if (err) {
+  db.query(updateQuery, [nombre, descripcion, telefono, experiencia, id])
+    .then(result => {
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      
+      res.json({ message: 'Perfil actualizado exitosamente' });
+    })
+    .catch(err => {
       console.error('Error actualizando perfil:', err);
       return res.status(500).json({ error: 'Error actualizando perfil' });
-    }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
-    }
-    
-    res.json({ message: 'Perfil actualizado exitosamente' });
-  });
+    });
 });
 
 // Actualizar foto de perfil del empleado
@@ -628,7 +609,7 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
 
     // Usar la variable global de conectividad
 
-    if (!isMySQL) {
+    if (!isPostgreSQL) {
       const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
       if (empleadoIndex === -1) {
         return res.status(404).json({ error: 'Perfil no encontrado' });
@@ -642,29 +623,29 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
       });
     }
 
-    const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
+    const updateQuery = `UPDATE candidatos SET foto_perfil = $1 WHERE idCandidatos = $2`;
     
-    db.query(updateQuery, [fotoPath, id], (err, result) => {
-      if (err) {
+    db.query(updateQuery, [fotoPath, id])
+      .then(result => {
+        if (result.rowCount === 0) {
+          return res.status(404).json({ error: 'Perfil no encontrado' });
+        }
+        
+        res.json({ 
+          message: 'Foto de perfil actualizada exitosamente',
+          foto_perfil: fotoPath
+        });
+      })
+      .catch(err => {
         console.error('Error actualizando foto de perfil:', err);
         return res.status(500).json({ error: 'Error actualizando foto de perfil' });
-      }
-      
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Perfil no encontrado' });
-      }
-      
-      res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
       });
-    });
   });
 });
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     return res.json(datosSimulados.vacantes);
   }
   
@@ -696,7 +677,7 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     return res.status(403).json({ error: 'Solo puedes ver tu propio perfil' });
   }
   
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const empresa = datosSimulados.empresas.find(emp => emp.id == id);
     if (!empresa) {
       return res.status(404).json({ error: 'Empresa no encontrada' });
@@ -712,20 +693,20 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     });
   }
   
-  const query = 'SELECT * FROM empresa WHERE idEmpresa = ?';
+  const query = 'SELECT * FROM empresa WHERE idEmpresa = $1';
   
-  db.query(query, [id], (err, results) => {
-    if (err) {
+  db.query(query, [id])
+    .then(results => {
+      if (results.rows.length === 0) {
+        return res.status(404).json({ error: 'Empresa no encontrada' });
+      }
+      
+      res.json(results.rows[0]);
+    })
+    .catch(err => {
       console.error('Error obteniendo perfil empresa:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-    
-    res.json(results[0]);
-  });
+    });
 });
 
 // Actualizar perfil de empresa
@@ -738,7 +719,7 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
     if (empresaIndex === -1) {
       return res.status(404).json({ error: 'Empresa no encontrada' });
@@ -761,22 +742,22 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
 
   const updateQuery = `
     UPDATE empresa 
-    SET Nombre_Empresa = ?, descripcion = ?, Telefono_Empresa = ?, Ubicacion = ?
-    WHERE idEmpresa = ?
+    SET Nombre_Empresa = $1, descripcion = $2, Telefono_Empresa = $3, Ubicacion = $4
+    WHERE idEmpresa = $5
   `;
   
-  db.query(updateQuery, [nombre, descripcion, telefono, ubicacion, id], (err, result) => {
-    if (err) {
+  db.query(updateQuery, [nombre, descripcion, telefono, ubicacion, id])
+    .then(result => {
+      if (result.rowCount === 0) {
+        return res.status(404).json({ error: 'Empresa no encontrada' });
+      }
+      
+      res.json({ message: 'Perfil actualizado exitosamente' });
+    })
+    .catch(err => {
       console.error('Error actualizando perfil empresa:', err);
       return res.status(500).json({ error: 'Error actualizando perfil' });
-    }
-    
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-    
-    res.json({ message: 'Perfil actualizado exitosamente' });
-  });
+    });
 });
 
 // Actualizar foto de perfil de empresa
@@ -823,7 +804,7 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
 
     // Usar la variable global de conectividad
 
-    if (!isMySQL) {
+    if (!isPostgreSQL) {
       const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
       if (empresaIndex === -1) {
         return res.status(404).json({ error: 'Empresa no encontrada' });
@@ -837,23 +818,23 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
       });
     }
 
-    const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
+    const updateQuery = `UPDATE empresa SET foto_perfil = $1 WHERE idEmpresa = $2`;
     
-    db.query(updateQuery, [fotoPath, id], (err, result) => {
-      if (err) {
+    db.query(updateQuery, [fotoPath, id])
+      .then(result => {
+        if (result.rowCount === 0) {
+          return res.status(404).json({ error: 'Empresa no encontrada' });
+        }
+        
+        res.json({ 
+          message: 'Foto de perfil actualizada exitosamente',
+          foto_perfil: fotoPath
+        });
+      })
+      .catch(err => {
         console.error('Error actualizando foto de perfil empresa:', err);
         return res.status(500).json({ error: 'Error actualizando foto de perfil' });
-      }
-      
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Empresa no encontrada' });
-      }
-      
-      res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
       });
-    });
   });
 });
 
@@ -862,7 +843,7 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
   const { tipo_puesto, salario, horario, ubicacion } = req.body;
   const empresaId = req.user.id;
   
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const nuevaVacante = {
       idPuestos: datosSimulados.vacantes.length + 1,
       Tipo_Puesto: tipo_puesto,
@@ -878,19 +859,19 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO vacantes (tipo_puesto, salario, horario, ubicacion, empresa_id) VALUES ($1, $2, $3, $4, $5) RETURNING idpuestos';
   
-  db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, results) => {
-    if (err) {
+  db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId])
+    .then(results => {
+      res.json({ 
+        message: 'Vacante creada exitosamente',
+        id: results.rows[0].idpuestos 
+      });
+    })
+    .catch(err => {
       console.error('Error creando vacante:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    res.json({ 
-      message: 'Vacante creada exitosamente',
-      id: results.insertId 
     });
-  });
 });
 
 // Obtener vacantes de una empresa
@@ -902,7 +883,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.status(403).json({ error: 'Solo puedes ver tus propias vacantes' });
   }
   
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const empresa = datosSimulados.empresas.find(emp => emp.id == id);
     if (!empresa) {
       return res.json([]);
@@ -911,23 +892,23 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.json(vacantesEmpresa);
   }
   
-  const query = 'SELECT * FROM puestos WHERE empresa_idEmpresa = ? ORDER BY idPuestos DESC';
+  const query = 'SELECT * FROM vacantes WHERE empresa_id = $1 ORDER BY idpuestos DESC';
   
-  db.query(query, [id], (err, results) => {
-    if (err) {
+  db.query(query, [id])
+    .then(results => {
+      res.json(results.rows);
+    })
+    .catch(err => {
       console.error('Error obteniendo vacantes empresa:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    res.json(results);
-  });
+    });
 });
 
 // === RUTAS PARA ADMIN ===
 
 // Estadísticas generales
 app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req, res) => {
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     return res.json({
       empleados: datosSimulados.empleados.length,
       empresas: datosSimulados.empresas.length,
@@ -965,7 +946,7 @@ app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req
 
 // Obtener todos los usuarios
 app.get('/api/admin/usuarios', authenticateToken, requireRole('admin'), (req, res) => {
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const allUsers = [
       ...datosSimulados.empleados,
       ...datosSimulados.empresas
@@ -1001,7 +982,7 @@ app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), as
     return res.status(400).json({ error: 'ID del puesto es requerido' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // Simulación para modo sin MySQL
     const aplicacionId = Math.floor(Math.random() * 1000) + 100;
     
@@ -1129,7 +1110,7 @@ app.get('/api/empleado/aplicaciones/:id', authenticateToken, requireRole('emplea
     return res.status(403).json({ error: 'Solo puedes ver tus propias aplicaciones' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // Datos simulados
     const aplicacionesSimuladas = [
       {
@@ -1190,7 +1171,7 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
     return res.status(403).json({ error: 'Solo puedes ver aplicaciones de tu empresa' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // Datos simulados más realistas
     const aplicacionesSimuladas = [
       {
@@ -1303,7 +1284,7 @@ app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole(
     return res.status(400).json({ error: 'Estado inválido' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // Simular persistencia actualizando los datos en memoria
     let aplicacionesSimuladas = [
       {
@@ -1447,7 +1428,7 @@ app.get('/api/empleado/favoritos/:id', authenticateToken, requireRole('empleado'
     return res.status(403).json({ error: 'Solo puedes ver tus propios favoritos' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // Datos simulados - vacantes favoritas
     const favoritosSimulados = [
       {
@@ -1510,7 +1491,7 @@ app.get('/api/empleado/favorito/:empleadoId/:vacanteId', authenticateToken, requ
     return res.status(403).json({ error: 'Solo puedes verificar tus propios favoritos' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // En simulación, solo las vacantes 1 y 3 son favoritas
     const isFavorite = [1, 3].includes(parseInt(vacanteId));
     return res.json({ isFavorite });
@@ -1537,7 +1518,7 @@ app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('emplea
     return res.status(400).json({ error: 'ID del puesto es requerido' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     // Simulación para modo sin MySQL
     const isCurrentlyFavorite = [1, 3].includes(parseInt(puesto_id));
     
@@ -1618,7 +1599,7 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 
     // Usar la variable global de conectividad
 
-    if (!isMySQL) {
+    if (!isPostgreSQL) {
       // En datos simulados, agregar el archivo a la lista del usuario
       if (!datosSimulados.archivos) {
         datosSimulados.archivos = [];
@@ -1649,7 +1630,7 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
   }
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const archivosUsuario = (datosSimulados.archivos || []).filter(archivo => 
       archivo.userId == userId && archivo.userId == req.user.id
     );
@@ -1664,7 +1645,7 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
 app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const archivo = (datosSimulados.archivos || []).find(archivo => 
       archivo.id === fileId && archivo.userId == req.user.id
     );
@@ -1700,7 +1681,7 @@ app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
 app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  if (!isMySQL) {
+  if (!isPostgreSQL) {
     const index = (datosSimulados.archivos || []).findIndex(archivo => 
       archivo.id === fileId && archivo.userId == req.user.id
     );
