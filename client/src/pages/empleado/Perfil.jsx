@@ -2,12 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
+import FileUpload from '../../components/FileUpload';
+import FileList from '../../components/FileList';
 import '../../styles/Perfil.css';
 
 const EmpleadoPerfil = () => {
   const { user, logout } = useAuth();
   const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [uploadMessage, setUploadMessage] = useState('');
+  const [uploadError, setUploadError] = useState('');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     fetchPerfil();
@@ -22,6 +27,19 @@ const EmpleadoPerfil = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUploadSuccess = (file) => {
+    setUploadMessage(`${file.originalName} se subió exitosamente`);
+    setUploadError('');
+    setRefreshTrigger(prev => prev + 1); // Trigger refresh de listas
+    setTimeout(() => setUploadMessage(''), 3000);
+  };
+
+  const handleUploadError = (error) => {
+    setUploadError(error);
+    setUploadMessage('');
+    setTimeout(() => setUploadError(''), 5000);
   };
 
   if (loading) {
@@ -56,6 +74,19 @@ const EmpleadoPerfil = () => {
               </div>
             </div>
 
+            {/* Mensajes de feedback */}
+            {uploadMessage && (
+              <div className="upload-success-message">
+                ✅ {uploadMessage}
+              </div>
+            )}
+            
+            {uploadError && (
+              <div className="upload-error-message">
+                ❌ {uploadError}
+              </div>
+            )}
+
             <div className="perfil-sections">
               <div className="perfil-section">
                 <h4>Información Personal</h4>
@@ -82,15 +113,59 @@ const EmpleadoPerfil = () => {
                 </div>
               </div>
 
+              {/* Sección de Foto de Perfil */}
               <div className="perfil-section">
-                <h4>Documentos</h4>
-                <div className="documentos-content">
-                  {perfil?.Documentos ? (
-                    <p>{perfil.Documentos}</p>
-                  ) : (
-                    <p className="no-info">No hay documentos cargados</p>
-                  )}
-                </div>
+                <h4>Foto de Perfil</h4>
+                <FileUpload
+                  fileType="profile"
+                  accept="image/*"
+                  maxSize={5 * 1024 * 1024} // 5MB para imágenes
+                  onUploadSuccess={handleUploadSuccess}
+                  onUploadError={handleUploadError}
+                  label="Subir foto de perfil"
+                  description="Formatos JPG, PNG. Máximo 5MB."
+                />
+                <FileList 
+                  fileType="profile" 
+                  title="Fotos de perfil" 
+                  refreshTrigger={refreshTrigger}
+                />
+              </div>
+
+              {/* Sección de CV */}
+              <div className="perfil-section">
+                <h4>Currículum Vitae</h4>
+                <FileUpload
+                  fileType="cv"
+                  accept=".pdf,.doc,.docx"
+                  onUploadSuccess={handleUploadSuccess}
+                  onUploadError={handleUploadError}
+                  label="Subir CV"
+                  description="Sube tu CV en formato PDF o Word"
+                />
+                <FileList 
+                  fileType="cv" 
+                  title="Mis CVs" 
+                  refreshTrigger={refreshTrigger}
+                />
+              </div>
+
+              {/* Sección de Documentos Adicionales */}
+              <div className="perfil-section">
+                <h4>Documentos Adicionales</h4>
+                <FileUpload
+                  fileType="documents"
+                  accept=".pdf,.doc,.docx,.jpg,.png,.txt"
+                  onUploadSuccess={handleUploadSuccess}
+                  onUploadError={handleUploadError}
+                  label="Subir documentos"
+                  description="Certificados, cartas de recomendación, portafolio, etc."
+                />
+                <FileList 
+                  fileType="documents" 
+                  title="Mis documentos" 
+                  refreshTrigger={refreshTrigger}
+                />
               </div>
 
               <div className="perfil-section">

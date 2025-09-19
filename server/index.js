@@ -3,6 +3,9 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs-extra');
 const emailService = require('./utils/emailService');
 require('dotenv').config();
 
@@ -12,6 +15,13 @@ const PORT = process.env.PORT || 3001;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Nota: Archivos protegidos por autenticación - no serving estático público
+
+// Crear directorio uploads si no existe
+fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
+fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
+fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
 
 // Configuración de conexión a MySQL
 const db = mysql.createConnection({
@@ -38,6 +48,78 @@ db.connect((err) => {
 
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'findwork_secret_key';
+
+// Configuración de Multer para diferentes tipos de archivos
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const fileType = req.body.fileType || 'documents';
+    let uploadPath = path.join(__dirname, 'uploads');
+    
+    switch (fileType) {
+      case 'profile':
+        uploadPath = path.join(uploadPath, 'profiles');
+        break;
+      case 'cv':
+        uploadPath = path.join(uploadPath, 'cvs');
+        break;
+      default:
+        uploadPath = path.join(uploadPath, 'documents');
+    }
+    
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = file.originalname.replace(ext, '').replace(/[^a-zA-Z0-9]/g, '_');
+    cb(null, `${req.user.id}_${name}_${uniqueSuffix}${ext}`);
+  }
+});
+
+// Filtros de archivos por tipo
+const fileFilter = (req, file, cb) => {
+  const fileType = req.body.fileType || 'documents';
+  
+  if (fileType === 'profile') {
+    // Solo imágenes para fotos de perfil
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
+    }
+  } else if (fileType === 'cv') {
+    // PDFs y documentos de Word para CVs
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos PDF, DOC o DOCX para CVs'), false);
+    }
+  } else {
+    // Documentos generales - más flexible
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+      'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido'), false);
+    }
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB límite
+  }
+});
 
 // Middleware de autenticación
 const authenticateToken = (req, res, next) => {
@@ -997,6 +1079,150 @@ app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('emplea
       });
     }
   });
+});
+
+// ========================================
+// RUTAS DE ARCHIVOS
+// ========================================
+
+// Subir archivo
+app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se ha subido ningún archivo' });
+    }
+
+    const fileInfo = {
+      id: Date.now().toString(),
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      fileType: req.body.fileType || 'documents',
+      userId: req.user.id,
+      uploadDate: new Date().toISOString(),
+      url: `/uploads/${req.body.fileType || 'documents'}/${req.file.filename}`
+    };
+
+    // En datos simulados, agregar el archivo a la lista del usuario
+    if (!datosSimulados.archivos) {
+      datosSimulados.archivos = [];
+    }
+    datosSimulados.archivos.push(fileInfo);
+
+    res.json({
+      message: 'Archivo subido exitosamente',
+      file: fileInfo
+    });
+  } catch (error) {
+    console.error('Error subiendo archivo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// Obtener archivos del usuario
+app.get('/api/files/:userId', authenticateToken, (req, res) => {
+  const { userId } = req.params;
+  
+  // Verificar que el usuario solo puede ver sus propios archivos
+  if (req.user.id !== parseInt(userId)) {
+    return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
+  }
+
+  if (!isMySQL) {
+    const archivosUsuario = (datosSimulados.archivos || []).filter(archivo => archivo.userId == userId);
+    return res.json(archivosUsuario);
+  }
+
+  // TODO: Implementar consulta MySQL para archivos
+  res.json([]);
+});
+
+// Descargar archivo autenticado
+app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
+  const { fileId } = req.params;
+
+  if (!isMySQL) {
+    const archivo = (datosSimulados.archivos || []).find(archivo => 
+      archivo.id === fileId && archivo.userId == req.user.id
+    );
+    
+    if (!archivo) {
+      return res.status(404).json({ error: 'Archivo no encontrado' });
+    }
+
+    try {
+      const filePath = path.join(__dirname, 'uploads', archivo.fileType, archivo.filename);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Archivo físico no encontrado' });
+      }
+
+      res.setHeader('Content-Disposition', `attachment; filename="${archivo.originalName}"`);
+      res.setHeader('Content-Type', archivo.mimetype);
+      
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error('Error descargando archivo:', error);
+      res.status(500).json({ error: 'Error descargando archivo' });
+    }
+
+    return;
+  }
+
+  // TODO: Implementar descarga MySQL
+  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
+});
+
+// Eliminar archivo
+app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
+  const { fileId } = req.params;
+
+  if (!isMySQL) {
+    const index = (datosSimulados.archivos || []).findIndex(archivo => 
+      archivo.id === fileId && archivo.userId == req.user.id
+    );
+    
+    if (index === -1) {
+      return res.status(404).json({ error: 'Archivo no encontrado o sin permisos' });
+    }
+
+    const archivo = datosSimulados.archivos[index];
+    
+    // Eliminar archivo físico
+    try {
+      const filePath = path.join(__dirname, 'uploads', archivo.fileType, archivo.filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (error) {
+      console.error('Error eliminando archivo físico:', error);
+    }
+
+    // Eliminar de datos simulados
+    datosSimulados.archivos.splice(index, 1);
+    
+    return res.json({ message: 'Archivo eliminado exitosamente' });
+  }
+
+  // TODO: Implementar eliminación MySQL
+  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
+});
+
+// Middleware de manejo de errores para multer
+app.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ error: 'El archivo es demasiado grande. Máximo 10MB.' });
+    }
+    return res.status(400).json({ error: 'Error en la subida del archivo: ' + error.message });
+  }
+  
+  if (error.message.includes('Solo se permiten')) {
+    return res.status(400).json({ error: error.message });
+  }
+  
+  next(error);
 });
 
 app.listen(PORT, () => {

@@ -1,0 +1,181 @@
+.file-list {
+  margin-bottom: 2rem;
+}
+
+.file-list h4 {
+  color: #374151;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.file-list-loading,
+.file-list-empty {
+  text-align: center;
+  padding: 2rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+}
+
+.loading-spinner {
+  font-size: 1.5rem;
+  animation: spin 1s linear infinite;
+  margin-bottom: 0.5rem;
+}
+
+.empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.file-list-empty p,
+.file-list-loading p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.files-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.file-item {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.file-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.file-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.file-icon-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.file-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.file-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.file-meta {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.file-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+}
+
+.download-btn:hover {
+  background-color: #dbeafe;
+}
+
+.delete-btn:hover {
+  background-color: #fee2e2;
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.file-type-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: #3b82f6;
+  color: white;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Estilos responsivos */
+@media (max-width: 768px) {
+  .file-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .file-actions {
+    align-self: flex-end;
+  }
+  
+  .file-icon-name {
+    width: 100%;
+  }
+}
+
+/* Variantes por tipo de archivo */
+.file-item[data-type="cv"] {
+  border-left: 4px solid #10b981;
+}
+
+.file-item[data-type="profile"] {
+  border-left: 4px solid #8b5cf6;
+}
+
+.file-item[data-type="documents"] {
+  border-left: 4px solid #f59e0b;
+}
