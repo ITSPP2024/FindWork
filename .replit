@@ -5,7 +5,7 @@ channel = "stable-25_05"
 
 [agent]
 expertMode = true
-integrations = ["replitmail:1.0.0", "twilio_send_message:1.0.0"]
+integrations = ["replitmail:1.0.0", "twilio_send_message:1.0.0", "javascript_database:1.0.0"]
 
 [workflows]
 runButton = "Project"
@@ -38,10 +38,6 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 40543
-externalPort = 3000
 
 [deployment]
 deploymentTarget = "autoscale"
