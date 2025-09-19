@@ -1,5 +1,5 @@
 const express = require('express');
-const { Client } = require('pg');
+const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -33,21 +33,23 @@ fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
 
-// Configuración de conexión a PostgreSQL
-const db = new Client({
-  connectionString: process.env.DATABASE_URL
+// Configuración de conexión a MySQL
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'admin',
+  database: 'powerman'
 });
 
 // Conectar a la base de datos
-db.connect()
-  .then(() => {
-    console.log('✅ Conectado a PostgreSQL database');
-  })
-  .catch((err) => {
-    console.error('⚠️  Error conectando a PostgreSQL:', err.message);
+db.connect((err) => {
+  if (err) {
+    console.error('⚠️  Error conectando a MySQL:', err.message);
     console.log('💡 La aplicación funcionará con datos simulados.');
     return;
-  });
+  }
+  console.log('✅ Conectado a MySQL database');
+});
 
 // JWT Secret
 // JWT Secret con fallback para desarrollo
@@ -157,41 +159,20 @@ const requireRole = (role) => {
   };
 };
 
-// Datos simulados (se reemplazarán con PostgreSQL cuando esté conectado)
-let isPostgreSQL = false;
+// Datos simulados (se reemplazarán con MySQL cuando esté conectado)
+let isMySQL = false;
 
-// Verificar si PostgreSQL está conectado y agregar columnas Tipo_Usuario
-setTimeout(async () => {
-  try {
-    // Verificar si la conexión está disponible
-    await db.query('SELECT 1');
-    isPostgreSQL = true;
-    console.log('🔗 PostgreSQL está disponible');
-    
-    // Agregar columna Tipo_Usuario a candidatos si no existe
-    await db.query(`
-      ALTER TABLE candidatos 
-      ADD COLUMN IF NOT EXISTS Tipo_Usuario VARCHAR(50) DEFAULT 'empleado'
-    `);
-    console.log('✅ Columna Tipo_Usuario verificada en candidatos');
-    
-    // Actualizar registros existentes
-    await db.query(`UPDATE candidatos SET Tipo_Usuario = 'empleado' WHERE Tipo_Usuario IS NULL`);
-    console.log('✅ Registros de candidatos actualizados');
-    
-    // Agregar columna Tipo_Usuario a empresa si no existe
-    await db.query(`
-      ALTER TABLE empresa 
-      ADD COLUMN IF NOT EXISTS Tipo_Usuario VARCHAR(50) DEFAULT 'empresa'
-    `);
-    console.log('✅ Columna Tipo_Usuario verificada en empresa');
-    
-    // Actualizar registros existentes
-    await db.query(`UPDATE empresa SET Tipo_Usuario = 'empresa' WHERE Tipo_Usuario IS NULL`);
-    console.log('✅ Registros de empresa actualizados');
-  } catch (err) {
-    console.log('⚠️ Error con PostgreSQL:', err.message);
-  }
+// Verificar si MySQL está conectado
+setTimeout(() => {
+  db.ping((err) => {
+    if (!err) {
+      isMySQL = true;
+      console.log('🔗 MySQL está disponible');
+    } else {
+      isMySQL = false;
+      console.log('⚠️ MySQL no disponible, usando datos simulados');
+    }
+  });
 }, 1000);
 
 const datosSimulados = {
@@ -326,7 +307,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   // Si MySQL no está disponible, usar datos simulados
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     let user = null;
     
     // Verificar si es admin
@@ -475,7 +456,7 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     return res.status(403).json({ error: 'Solo puedes ver tu propio perfil' });
   }
   
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const empleado = datosSimulados.empleados.find(emp => emp.id == id);
     if (!empleado) {
       return res.status(404).json({ error: 'Perfil no encontrado' });
@@ -524,7 +505,7 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
     if (empleadoIndex === -1) {
       return res.status(404).json({ error: 'Perfil no encontrado' });
@@ -609,7 +590,7 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
 
     // Usar la variable global de conectividad
 
-    if (!isPostgreSQL) {
+    if (!isMySQL) {
       const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
       if (empleadoIndex === -1) {
         return res.status(404).json({ error: 'Perfil no encontrado' });
@@ -645,7 +626,7 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     return res.json(datosSimulados.vacantes);
   }
   
@@ -677,7 +658,7 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     return res.status(403).json({ error: 'Solo puedes ver tu propio perfil' });
   }
   
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const empresa = datosSimulados.empresas.find(emp => emp.id == id);
     if (!empresa) {
       return res.status(404).json({ error: 'Empresa no encontrada' });
@@ -719,7 +700,7 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
     if (empresaIndex === -1) {
       return res.status(404).json({ error: 'Empresa no encontrada' });
@@ -804,7 +785,7 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
 
     // Usar la variable global de conectividad
 
-    if (!isPostgreSQL) {
+    if (!isMySQL) {
       const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
       if (empresaIndex === -1) {
         return res.status(404).json({ error: 'Empresa no encontrada' });
@@ -843,7 +824,7 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
   const { tipo_puesto, salario, horario, ubicacion } = req.body;
   const empresaId = req.user.id;
   
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const nuevaVacante = {
       idPuestos: datosSimulados.vacantes.length + 1,
       Tipo_Puesto: tipo_puesto,
@@ -883,7 +864,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.status(403).json({ error: 'Solo puedes ver tus propias vacantes' });
   }
   
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const empresa = datosSimulados.empresas.find(emp => emp.id == id);
     if (!empresa) {
       return res.json([]);
@@ -908,7 +889,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
 
 // Estadísticas generales
 app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req, res) => {
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     return res.json({
       empleados: datosSimulados.empleados.length,
       empresas: datosSimulados.empresas.length,
@@ -946,7 +927,7 @@ app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req
 
 // Obtener todos los usuarios
 app.get('/api/admin/usuarios', authenticateToken, requireRole('admin'), (req, res) => {
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const allUsers = [
       ...datosSimulados.empleados,
       ...datosSimulados.empresas
@@ -982,7 +963,7 @@ app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), as
     return res.status(400).json({ error: 'ID del puesto es requerido' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // Simulación para modo sin MySQL
     const aplicacionId = Math.floor(Math.random() * 1000) + 100;
     
@@ -1110,7 +1091,7 @@ app.get('/api/empleado/aplicaciones/:id', authenticateToken, requireRole('emplea
     return res.status(403).json({ error: 'Solo puedes ver tus propias aplicaciones' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // Datos simulados
     const aplicacionesSimuladas = [
       {
@@ -1171,7 +1152,7 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
     return res.status(403).json({ error: 'Solo puedes ver aplicaciones de tu empresa' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // Datos simulados más realistas
     const aplicacionesSimuladas = [
       {
@@ -1284,7 +1265,7 @@ app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole(
     return res.status(400).json({ error: 'Estado inválido' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // Simular persistencia actualizando los datos en memoria
     let aplicacionesSimuladas = [
       {
@@ -1428,7 +1409,7 @@ app.get('/api/empleado/favoritos/:id', authenticateToken, requireRole('empleado'
     return res.status(403).json({ error: 'Solo puedes ver tus propios favoritos' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // Datos simulados - vacantes favoritas
     const favoritosSimulados = [
       {
@@ -1491,7 +1472,7 @@ app.get('/api/empleado/favorito/:empleadoId/:vacanteId', authenticateToken, requ
     return res.status(403).json({ error: 'Solo puedes verificar tus propios favoritos' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // En simulación, solo las vacantes 1 y 3 son favoritas
     const isFavorite = [1, 3].includes(parseInt(vacanteId));
     return res.json({ isFavorite });
@@ -1518,7 +1499,7 @@ app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('emplea
     return res.status(400).json({ error: 'ID del puesto es requerido' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     // Simulación para modo sin MySQL
     const isCurrentlyFavorite = [1, 3].includes(parseInt(puesto_id));
     
@@ -1599,7 +1580,7 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 
     // Usar la variable global de conectividad
 
-    if (!isPostgreSQL) {
+    if (!isMySQL) {
       // En datos simulados, agregar el archivo a la lista del usuario
       if (!datosSimulados.archivos) {
         datosSimulados.archivos = [];
@@ -1630,7 +1611,7 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
   }
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const archivosUsuario = (datosSimulados.archivos || []).filter(archivo => 
       archivo.userId == userId && archivo.userId == req.user.id
     );
@@ -1645,7 +1626,7 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
 app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const archivo = (datosSimulados.archivos || []).find(archivo => 
       archivo.id === fileId && archivo.userId == req.user.id
     );
@@ -1681,7 +1662,7 @@ app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
 app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  if (!isPostgreSQL) {
+  if (!isMySQL) {
     const index = (datosSimulados.archivos || []).findIndex(archivo => 
       archivo.id === fileId && archivo.userId == req.user.id
     );
