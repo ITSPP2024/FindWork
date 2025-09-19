@@ -370,35 +370,39 @@ app.post('/api/login', async (req, res) => {
 
       // Buscar según el tipo de usuario seleccionado
       if (tipoUsuario === 'empleado') {
-        const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email FROM candidatos WHERE Correo_Candidatos = $1';
+        const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email FROM candidatos WHERE Correo_Candidatos = ?';
         
-        db.query(candidatoQuery, [email])
-          .then(results => {
-            if (results.rows.length > 0) {
-              const user = results.rows[0];
-              user.tipo = tipoUsuario; // Usar el tipo seleccionado
-              return resolve(user);
-            }
-            
-            // Usuario no encontrado
-            resolve(null);
-          })
-          .catch(err => reject(err));
+        db.query(candidatoQuery, [email], (err, results) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          if (results.length > 0) {
+            const user = results[0];
+            user.tipo = tipoUsuario; // Usar el tipo seleccionado
+            return resolve(user);
+          }
+          
+          // Usuario no encontrado
+          resolve(null);
+        });
       } else if (tipoUsuario === 'empresa') {
-        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email FROM empresa WHERE Correo_Empresa = $1';
+        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email FROM empresa WHERE Correo_Empresa = ?';
         
-        db.query(empresaQuery, [email])
-          .then(results => {
-            if (results.rows.length > 0) {
-              const user = results.rows[0];
-              user.tipo = tipoUsuario; // Usar el tipo seleccionado
-              return resolve(user);
-            }
-            
-            // Usuario no encontrado
-            resolve(null);
-          })
-          .catch(err => reject(err));
+        db.query(empresaQuery, [email], (err, results) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          if (results.length > 0) {
+            const user = results[0];
+            user.tipo = tipoUsuario; // Usar el tipo seleccionado
+            return resolve(user);
+          }
+          
+          // Usuario no encontrado
+          resolve(null);
+        });
       } else {
         // Tipo de usuario inválido
         reject(new Error('Tipo de usuario inválido'));
@@ -478,21 +482,20 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     SELECT c.*, e.Documentos, e.Fecha_Registro, e.Observaciones, e.Experiencia 
     FROM candidatos c 
     LEFT JOIN expedientes e ON c.idCandidatos = e.candidatos_id 
-    WHERE c.idCandidatos = $1
+    WHERE c.idCandidatos = ?
   `;
   
-  db.query(query, [id])
-    .then(results => {
-      if (results.rows.length === 0) {
-        return res.status(404).json({ error: 'Perfil no encontrado' });
-      }
-      
-      res.json(results.rows[0]);
-    })
-    .catch(err => {
+  db.query(query, [id], (err, results) => {
+    if (err) {
       console.error('Error obteniendo perfil:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Perfil no encontrado' });
+    }
+    
+    res.json(results[0]);
+  });
 });
 
 // Actualizar perfil del empleado
@@ -528,22 +531,21 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 
   const updateQuery = `
     UPDATE candidatos 
-    SET Nombre_Candidatos = $1, descripcion = $2, Numero_Candidatos = $3, Experiencia = $4
-    WHERE idCandidatos = $5
+    SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?, Experiencia = ?
+    WHERE idCandidatos = ?
   `;
   
-  db.query(updateQuery, [nombre, descripcion, telefono, experiencia, id])
-    .then(result => {
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Perfil no encontrado' });
-      }
-      
-      res.json({ message: 'Perfil actualizado exitosamente' });
-    })
-    .catch(err => {
+  db.query(updateQuery, [nombre, descripcion, telefono, experiencia, id], (err, result) => {
+    if (err) {
       console.error('Error actualizando perfil:', err);
       return res.status(500).json({ error: 'Error actualizando perfil' });
-    });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Perfil no encontrado' });
+    }
+    
+    res.json({ message: 'Perfil actualizado exitosamente' });
+  });
 });
 
 // Actualizar foto de perfil del empleado
@@ -604,23 +606,22 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
       });
     }
 
-    const updateQuery = `UPDATE candidatos SET foto_perfil = $1 WHERE idCandidatos = $2`;
+    const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
     
-    db.query(updateQuery, [fotoPath, id])
-      .then(result => {
-        if (result.rowCount === 0) {
-          return res.status(404).json({ error: 'Perfil no encontrado' });
-        }
-        
-        res.json({ 
-          message: 'Foto de perfil actualizada exitosamente',
-          foto_perfil: fotoPath
-        });
-      })
-      .catch(err => {
+    db.query(updateQuery, [fotoPath, id], (err, result) => {
+      if (err) {
         console.error('Error actualizando foto de perfil:', err);
         return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Perfil no encontrado' });
+      }
+      
+      res.json({ 
+        message: 'Foto de perfil actualizada exitosamente',
+        foto_perfil: fotoPath
       });
+    });
   });
 });
 
@@ -674,20 +675,19 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     });
   }
   
-  const query = 'SELECT * FROM empresa WHERE idEmpresa = $1';
+  const query = 'SELECT * FROM empresa WHERE idEmpresa = ?';
   
-  db.query(query, [id])
-    .then(results => {
-      if (results.rows.length === 0) {
-        return res.status(404).json({ error: 'Empresa no encontrada' });
-      }
-      
-      res.json(results.rows[0]);
-    })
-    .catch(err => {
+  db.query(query, [id], (err, results) => {
+    if (err) {
       console.error('Error obteniendo perfil empresa:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    });
+    }
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    res.json(results[0]);
+  });
 });
 
 // Actualizar perfil de empresa
@@ -723,22 +723,21 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
 
   const updateQuery = `
     UPDATE empresa 
-    SET Nombre_Empresa = $1, descripcion = $2, Telefono_Empresa = $3, Ubicacion = $4
-    WHERE idEmpresa = $5
+    SET Nombre_Empresa = ?, descripcion = ?, Telefono_Empresa = ?, Ubicacion = ?
+    WHERE idEmpresa = ?
   `;
   
-  db.query(updateQuery, [nombre, descripcion, telefono, ubicacion, id])
-    .then(result => {
-      if (result.rowCount === 0) {
-        return res.status(404).json({ error: 'Empresa no encontrada' });
-      }
-      
-      res.json({ message: 'Perfil actualizado exitosamente' });
-    })
-    .catch(err => {
+  db.query(updateQuery, [nombre, descripcion, telefono, ubicacion, id], (err, result) => {
+    if (err) {
       console.error('Error actualizando perfil empresa:', err);
       return res.status(500).json({ error: 'Error actualizando perfil' });
-    });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    res.json({ message: 'Perfil actualizado exitosamente' });
+  });
 });
 
 // Actualizar foto de perfil de empresa
@@ -799,23 +798,22 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
       });
     }
 
-    const updateQuery = `UPDATE empresa SET foto_perfil = $1 WHERE idEmpresa = $2`;
+    const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
     
-    db.query(updateQuery, [fotoPath, id])
-      .then(result => {
-        if (result.rowCount === 0) {
-          return res.status(404).json({ error: 'Empresa no encontrada' });
-        }
-        
-        res.json({ 
-          message: 'Foto de perfil actualizada exitosamente',
-          foto_perfil: fotoPath
-        });
-      })
-      .catch(err => {
+    db.query(updateQuery, [fotoPath, id], (err, result) => {
+      if (err) {
         console.error('Error actualizando foto de perfil empresa:', err);
         return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ error: 'Empresa no encontrada' });
+      }
+      
+      res.json({ 
+        message: 'Foto de perfil actualizada exitosamente',
+        foto_perfil: fotoPath
       });
+    });
   });
 });
 
@@ -840,19 +838,18 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO vacantes (tipo_puesto, salario, horario, ubicacion, empresa_id) VALUES ($1, $2, $3, $4, $5) RETURNING idpuestos';
+  const query = 'INSERT INTO vacantes (tipo_puesto, salario, horario, ubicacion, empresa_id) VALUES (?, ?, ?, ?, ?)';
   
-  db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId])
-    .then(results => {
-      res.json({ 
-        message: 'Vacante creada exitosamente',
-        id: results.rows[0].idpuestos 
-      });
-    })
-    .catch(err => {
+  db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, result) => {
+    if (err) {
       console.error('Error creando vacante:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    res.json({ 
+      message: 'Vacante creada exitosamente',
+      id: result.insertId 
     });
+  });
 });
 
 // Obtener vacantes de una empresa
@@ -873,16 +870,15 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.json(vacantesEmpresa);
   }
   
-  const query = 'SELECT * FROM vacantes WHERE empresa_id = $1 ORDER BY idpuestos DESC';
+  const query = 'SELECT * FROM vacantes WHERE empresa_id = ? ORDER BY idpuestos DESC';
   
-  db.query(query, [id])
-    .then(results => {
-      res.json(results.rows);
-    })
-    .catch(err => {
+  db.query(query, [id], (err, results) => {
+    if (err) {
       console.error('Error obteniendo vacantes empresa:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
-    });
+    }
+    res.json(results);
+  });
 });
 
 // === RUTAS PARA ADMIN ===
