@@ -331,24 +331,25 @@ app.use('/uploads', authenticateToken, (req, res, next) => {
 
 // === RUTAS DE AUTENTICACIÓN ===
 
-// Login con detección automática de tipo de usuario
+// Login con selección manual de tipo de usuario
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, tipoUsuario } = req.body;
 
   // Si MySQL no está disponible, usar datos simulados
   if (!isMySQL) {
     let user = null;
     
     // Verificar si es admin
-    if (email === 'admin' && password === 'admin') {
+    if (email === 'admin' && password === 'admin' && tipoUsuario === 'admin') {
       user = { id: 1, nombre: 'Administrador', email: 'admin', tipo: 'admin' };
     } else {
-      // Buscar en empleados primero
-      user = datosSimulados.empleados.find(emp => emp.email === email);
-      if (user) {
-        user.tipo = 'empleado';
-      } else {
-        // Si no está en empleados, buscar en empresas
+      // Buscar según el tipo de usuario seleccionado
+      if (tipoUsuario === 'empleado') {
+        user = datosSimulados.empleados.find(emp => emp.email === email);
+        if (user) {
+          user.tipo = 'empleado';
+        }
+      } else if (tipoUsuario === 'empresa') {
         user = datosSimulados.empresas.find(emp => emp.email === email);
         if (user) {
           user.tipo = 'empresa';
@@ -391,24 +392,30 @@ app.post('/api/login', async (req, res) => {
   const searchUser = async () => {
     return new Promise((resolve, reject) => {
       // Verificar si es admin
-      if (email === 'admin' && password === 'admin') {
+      if (email === 'admin' && password === 'admin' && tipoUsuario === 'admin') {
         return resolve({ id: 1, nombre: 'Administrador', email: 'admin', tipo: 'admin' });
       }
 
-      // Buscar primero en candidatos
-      const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email, Tipo_Usuario as tipo FROM candidatos WHERE Correo_Candidatos = ?';
-      
-      db.query(candidatoQuery, [email], (err, results) => {
-        if (err) {
-          return reject(err);
-        }
+      // Buscar según el tipo de usuario seleccionado
+      if (tipoUsuario === 'empleado') {
+        const candidatoQuery = 'SELECT idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email FROM candidatos WHERE Correo_Candidatos = ?';
         
-        if (results.length > 0) {
-          return resolve(results[0]);
-        }
-        
-        // Si no está en candidatos, buscar en empresas
-        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email, Tipo_Usuario as tipo FROM empresa WHERE Correo_Empresa = ?';
+        db.query(candidatoQuery, [email], (err, results) => {
+          if (err) {
+            return reject(err);
+          }
+          
+          if (results.length > 0) {
+            const user = results[0];
+            user.tipo = tipoUsuario; // Usar el tipo seleccionado
+            return resolve(user);
+          }
+          
+          // Usuario no encontrado
+          resolve(null);
+        });
+      } else if (tipoUsuario === 'empresa') {
+        const empresaQuery = 'SELECT idEmpresa as id, Nombre_Empresa as nombre, Correo_Empresa as email FROM empresa WHERE Correo_Empresa = ?';
         
         db.query(empresaQuery, [email], (err, results) => {
           if (err) {
@@ -416,13 +423,18 @@ app.post('/api/login', async (req, res) => {
           }
           
           if (results.length > 0) {
-            return resolve(results[0]);
+            const user = results[0];
+            user.tipo = tipoUsuario; // Usar el tipo seleccionado
+            return resolve(user);
           }
           
           // Usuario no encontrado
           resolve(null);
         });
-      });
+      } else {
+        // Tipo de usuario inválido
+        resolve(null);
+      }
     });
   };
 

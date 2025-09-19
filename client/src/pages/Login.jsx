@@ -6,7 +6,8 @@ import '../styles/Login.css';
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    tipoUsuario: 'empleado'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,7 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password);
+    const result = await login(formData.email, formData.password, formData.tipoUsuario);
     
     if (result.success) {
       const dashboardPath = `/${result.user.tipo}/dashboard`;
@@ -61,6 +62,21 @@ const Login = () => {
         )}
 
         <form onSubmit={handleSubmit} className="login-form">
+
+          <div className="form-group">
+            <label htmlFor="tipoUsuario">Tipo de Usuario</label>
+            <select
+              id="tipoUsuario"
+              name="tipoUsuario"
+              value={formData.tipoUsuario}
+              onChange={handleChange}
+              required
+            >
+              <option value="empleado">Empleado</option>
+              <option value="empresa">Empresa</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
 
           <div className="form-group">
             <label htmlFor="email">Correo Electrónico o Usuario</label>
@@ -98,7 +114,7 @@ const Login = () => {
         </form>
 
         <div className="login-footer">
-          <p>El sistema detectará automáticamente tu tipo de usuario</p>
+          <p>Selecciona tu tipo de usuario y completa los datos</p>
         </div>
       </div>
     </div>
