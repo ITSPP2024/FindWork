@@ -21,9 +21,25 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem('user');
     
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      try {
+        const userData = JSON.parse(storedUser);
+        // Validar tipo de usuario almacenado
+        if (!userData.tipo || !['empleado', 'empresa', 'admin'].includes(userData.tipo)) {
+          console.warn('⚠️ Tipo de usuario inválido en localStorage, limpiando sesión');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setLoading(false);
+          return;
+        }
+        
+        setToken(storedToken);
+        setUser(userData);
+        api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      } catch (error) {
+        console.error('❌ Error parseando datos de usuario, limpiando sesión:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     
     setLoading(false);
@@ -31,12 +47,27 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
+      console.log('🔍 Intentando login para:', email);
       const response = await api.post('/login', {
         email,
         password
       });
 
       const { token: newToken, user: userData } = response.data;
+      console.log('✅ Login exitoso. Usuario:', userData);
+      
+      // Validar que el usuario tenga un tipo válido
+      if (!userData.tipo || !['empleado', 'empresa', 'admin'].includes(userData.tipo)) {
+        console.error('❌ Tipo de usuario inválido:', userData.tipo);
+        // Limpiar cualquier estado previo de autenticación
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        delete api.defaults.headers.common['Authorization'];
+        return { 
+          success: false, 
+          error: 'Tipo de usuario inválido. Contacta al administrador.' 
+        };
+      }
       
       setToken(newToken);
       setUser(userData);
@@ -48,7 +79,7 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: userData };
     } catch (error) {
-      console.error('Error en login:', error);
+      console.error('❌ Error en login:', error);
       return { 
         success: false, 
         error: error.response?.data?.error || 'Error de conexión' 
