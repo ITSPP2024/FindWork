@@ -77,8 +77,11 @@ const EmpresaDashboard = () => {
       });
       setShowCreateForm(false);
       fetchVacantes();
+      alert('✅ Vacante creada exitosamente');
     } catch (error) {
       console.error('Error creando vacante:', error);
+      const errorMessage = error.response?.data?.error || 'Error al crear la vacante';
+      alert(`❌ Error: ${errorMessage}`);
     }
   };
 

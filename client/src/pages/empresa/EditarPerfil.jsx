@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/EditarPerfil.css';
+import api from '../../services/api';
 
 const EditarPerfilEmpresa = () => {
   const { user } = useAuth();
@@ -27,24 +28,18 @@ const EditarPerfilEmpresa = () => {
 
   const cargarPerfil = async () => {
     try {
-      const response = await fetch(`/api/empresa/perfil/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+      const response = await api.get(`/empresa/perfil/${user.id}`);
+      const data = response.data;
+      
+      setPerfil({
+        nombre: data.Nombre_Empresa || data.nombre || '',
+        descripcion: data.descripcion || '',
+        telefono: data.Telefono_Empresa || data.telefono || '',
+        ubicacion: data.Ubicacion || data.ubicacion || '',
+        foto_perfil: data.foto_perfil
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPerfil({
-          nombre: data.Nombre_Empresa || data.nombre || '',
-          descripcion: data.descripcion || '',
-          telefono: data.Telefono_Empresa || data.telefono || '',
-          ubicacion: data.Ubicacion || data.ubicacion || '',
-          foto_perfil: data.foto_perfil
-        });
-        if (data.foto_perfil) {
-          setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
-        }
+      if (data.foto_perfil) {
+        setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
       }
     } catch (error) {
       console.error('Error cargando perfil:', error);
@@ -56,16 +51,8 @@ const EditarPerfilEmpresa = () => {
 
   const cargarArchivos = async () => {
     try {
-      const response = await fetch(`/api/files/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setArchivos(data);
-      }
+      const response = await api.get(`/files/${user.id}`);
+      setArchivos(response.data);
     } catch (error) {
       console.error('Error cargando archivos:', error);
     }
@@ -85,30 +72,22 @@ const EditarPerfilEmpresa = () => {
     setMensaje('');
 
     try {
-      const response = await fetch(`/api/empresa/perfil/${user.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          nombre: perfil.nombre,
-          descripcion: perfil.descripcion,
-          telefono: perfil.telefono,
-          ubicacion: perfil.ubicacion
-        })
+      const response = await api.put(`/empresa/perfil/${user.id}`, {
+        nombre: perfil.nombre,
+        descripcion: perfil.descripcion,
+        telefono: perfil.telefono,
+        ubicacion: perfil.ubicacion
       });
 
-      if (response.ok) {
-        setMensaje('✅ Perfil actualizado exitosamente');
-        setTimeout(() => setMensaje(''), 3000);
-      } else {
-        const error = await response.json();
-        setMensaje(`❌ Error: ${error.error}`);
-      }
+      setMensaje('✅ Perfil actualizado exitosamente');
+      setTimeout(() => setMensaje(''), 3000);
+      
+      // Recargar el perfil para mostrar los datos actualizados
+      await cargarPerfil();
     } catch (error) {
       console.error('Error guardando perfil:', error);
-      setMensaje('❌ Error al guardar el perfil');
+      const errorMessage = error.response?.data?.error || 'Error al guardar el perfil';
+      setMensaje(`❌ Error: ${errorMessage}`);
     } finally {
       setGuardando(false);
     }
@@ -138,27 +117,16 @@ const EditarPerfilEmpresa = () => {
     formData.append('fileType', 'profile');
 
     try {
-      const response = await fetch(`/api/empresa/foto-perfil/${user.id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
-        setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
-        setMensaje('✅ Foto de perfil actualizada exitosamente');
-        setTimeout(() => setMensaje(''), 3000);
-      } else {
-        const error = await response.json();
-        setMensaje(`❌ Error: ${error.error}`);
-      }
+      const response = await api.put(`/empresa/foto-perfil/${user.id}`, formData);
+      const data = response.data;
+      setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
+      setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
+      setMensaje('✅ Foto de perfil actualizada exitosamente');
+      setTimeout(() => setMensaje(''), 3000);
     } catch (error) {
       console.error('Error subiendo foto:', error);
-      setMensaje('❌ Error al subir la foto');
+      const errorMessage = error.response?.data?.error || 'Error al subir la foto';
+      setMensaje(`❌ ${errorMessage}`);
     } finally {
       setSubiendoFoto(false);
     }
@@ -179,26 +147,15 @@ const EditarPerfilEmpresa = () => {
     formData.append('fileType', 'documents');
 
     try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      if (response.ok) {
-        setMensaje('✅ Documento subido exitosamente');
-        cargarArchivos(); // Recargar lista de archivos
-        setTimeout(() => setMensaje(''), 3000);
-        e.target.value = ''; // Limpiar input
-      } else {
-        const error = await response.json();
-        setMensaje(`❌ Error: ${error.error}`);
-      }
+      await api.post('/upload', formData);
+      setMensaje('✅ Documento subido exitosamente');
+      cargarArchivos(); // Recargar lista de archivos
+      setTimeout(() => setMensaje(''), 3000);
+      e.target.value = ''; // Limpiar input
     } catch (error) {
       console.error('Error subiendo documento:', error);
-      setMensaje('❌ Error al subir el documento');
+      const errorMessage = error.response?.data?.error || 'Error al subir el documento';
+      setMensaje(`❌ ${errorMessage}`);
     }
   };
 
@@ -206,24 +163,14 @@ const EditarPerfilEmpresa = () => {
     if (!confirm('¿Estás seguro de que quieres eliminar este archivo?')) return;
 
     try {
-      const response = await fetch(`/api/files/${archivoId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        setMensaje('✅ Archivo eliminado exitosamente');
-        cargarArchivos(); // Recargar lista de archivos
-        setTimeout(() => setMensaje(''), 3000);
-      } else {
-        const error = await response.json();
-        setMensaje(`❌ Error: ${error.error}`);
-      }
+      await api.delete(`/files/${archivoId}`);
+      setMensaje('✅ Archivo eliminado exitosamente');
+      cargarArchivos(); // Recargar lista de archivos
+      setTimeout(() => setMensaje(''), 3000);
     } catch (error) {
       console.error('Error eliminando archivo:', error);
-      setMensaje('❌ Error al eliminar el archivo');
+      const errorMessage = error.response?.data?.error || 'Error al eliminar el archivo';
+      setMensaje(`❌ ${errorMessage}`);
     }
   };
 
