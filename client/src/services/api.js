@@ -83,4 +83,50 @@ export const applicationsAPI = {
   }
 };
 
+// API para favoritos
+export const favoritesAPI = {
+  // Obtener favoritos del empleado
+  getFavorites: async (employeeId) => {
+    try {
+      const response = await api.get(`/empleado/favoritos/${employeeId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error obteniendo favoritos:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error cargando favoritos' 
+      };
+    }
+  },
+
+  // Agregar/quitar favorito
+  toggleFavorite: async (vacanteId) => {
+    try {
+      const response = await api.post('/empleado/favorito/toggle', { puesto_id: vacanteId });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error actualizando favorito:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error actualizando favorito' 
+      };
+    }
+  },
+
+  // Verificar si una vacante es favorita
+  checkIsFavorite: async (employeeId, vacanteId) => {
+    try {
+      const response = await api.get(`/empleado/favorito/${employeeId}/${vacanteId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error verificando favorito:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error verificando favorito',
+        data: { isFavorite: false }
+      };
+    }
+  }
+};
+
 export default api;

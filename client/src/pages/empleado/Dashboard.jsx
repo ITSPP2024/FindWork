@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import api, { applicationsAPI } from '../../services/api';
+import api, { applicationsAPI, favoritesAPI } from '../../services/api';
 import ApplicationModal from '../../components/ApplicationModal';
 import '../../styles/Dashboard.css';
 import '../../styles/Applications.css';
+import '../../styles/Favorites.css';
 
 const EmpleadoDashboard = () => {
   const { user, logout } = useAuth();
@@ -13,12 +14,15 @@ const EmpleadoDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [applicationModal, setApplicationModal] = useState({ isOpen: false, vacante: null });
   const [aplicaciones, setAplicaciones] = useState([]);
+  const [favoritos, setFavoritos] = useState([]);
+  const [favoritesMap, setFavoritesMap] = useState({});
   const [activeTab, setActiveTab] = useState('vacantes');
 
   useEffect(() => {
     fetchVacantes();
     if (user?.id) {
       fetchMisAplicaciones();
+      fetchFavoritos();
     }
   }, [user]);
 
@@ -43,6 +47,52 @@ const EmpleadoDashboard = () => {
       }
     } catch (error) {
       console.error('Error cargando aplicaciones:', error);
+    }
+  };
+
+  const fetchFavoritos = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const result = await favoritesAPI.getFavorites(user.id);
+      if (result.success) {
+        setFavoritos(result.data);
+        
+        // Crear mapa de favoritos para acceso rápido
+        const map = {};
+        result.data.forEach(fav => {
+          map[fav.puesto_id] = true;
+        });
+        setFavoritesMap(map);
+      }
+    } catch (error) {
+      console.error('Error cargando favoritos:', error);
+    }
+  };
+
+  const handleToggleFavorite = async (vacanteId, e) => {
+    e.stopPropagation(); // Prevenir que se abra el modal de aplicación
+    
+    try {
+      const result = await favoritesAPI.toggleFavorite(vacanteId);
+      if (result.success) {
+        const { action, isFavorite } = result.data;
+        
+        // Actualizar el mapa de favoritos
+        setFavoritesMap(prev => ({
+          ...prev,
+          [vacanteId]: isFavorite
+        }));
+        
+        // Refrescar la lista de favoritos
+        await fetchFavoritos();
+        
+        // Mostrar mensaje de confirmación
+        const message = action === 'added' ? 'Agregado a favoritos ❤️' : 'Eliminado de favoritos 💔';
+        console.log(message);
+      }
+    } catch (error) {
+      console.error('Error actualizando favorito:', error);
     }
   };
 
@@ -104,6 +154,12 @@ const EmpleadoDashboard = () => {
             >
               Mis Aplicaciones ({aplicaciones.length})
             </button>
+            <button 
+              className={`nav-link ${activeTab === 'favoritos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('favoritos')}
+            >
+              Favoritos ({favoritos.length})
+            </button>
             <Link to="/empleado/perfil" className="nav-link">Mi Perfil</Link>
             <span className="user-info">Hola, {user?.nombre}</span>
             <button onClick={logout} className="logout-btn">Cerrar Sesión</button>
@@ -143,12 +199,21 @@ const EmpleadoDashboard = () => {
                         <p className="salario">💰 ${vacante.Salario || 'A negociar'}</p>
                         <p className="horario">🕒 {vacante.Horario || 'No especificado'}</p>
                       </div>
-                      <button 
-                        className="apply-btn"
-                        onClick={() => handleApplyClick(vacante)}
-                      >
-                        Postularse
-                      </button>
+                      <div className="vacante-actions">
+                        <button 
+                          className={`favorite-btn ${favoritesMap[vacante.idPuestos] ? 'active' : ''}`}
+                          onClick={(e) => handleToggleFavorite(vacante.idPuestos, e)}
+                          title={favoritesMap[vacante.idPuestos] ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                        >
+                          {favoritesMap[vacante.idPuestos] ? '❤️' : '🤍'}
+                        </button>
+                        <button 
+                          className="apply-btn"
+                          onClick={() => handleApplyClick(vacante)}
+                        >
+                          Postularse
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {filteredVacantes.length === 0 && !loading && (
@@ -213,6 +278,71 @@ const EmpleadoDashboard = () => {
                           <p>{aplicacion.carta_presentacion}</p>
                         </div>
                       )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'favoritos' && (
+          <>
+            <div className="dashboard-header">
+              <h2>Mis Favoritos</h2>
+              <p className="subtitle">Vacantes que has guardado para revisar más tarde</p>
+            </div>
+
+            <div className="dashboard-content">
+              {favoritos.length === 0 ? (
+                <div className="no-favoritos">
+                  <p>No tienes vacantes favoritas aún</p>
+                  <p>💡 Usa el ícono ❤️ en las vacantes para guardarlas aquí</p>
+                  <button 
+                    className="btn-primary"
+                    onClick={() => setActiveTab('vacantes')}
+                  >
+                    Explorar Vacantes
+                  </button>
+                </div>
+              ) : (
+                <div className="vacantes-grid">
+                  {favoritos.map((favorito) => (
+                    <div key={favorito.idFavorito} className="vacante-card favorito-card">
+                      <div className="vacante-header">
+                        <h3>{favorito.Tipo_Puesto}</h3>
+                        <span className="empresa">{favorito.Nombre_Empresa}</span>
+                        <span className="fecha-favorito">
+                          ❤️ {new Date(favorito.fecha_agregado).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <div className="vacante-details">
+                        <p className="ubicacion">📍 {favorito.Ubicacion || 'No especificada'}</p>
+                        <p className="salario">💰 ${favorito.Salario || 'A negociar'}</p>
+                        <p className="horario">🕒 {favorito.Horario || 'No especificado'}</p>
+                      </div>
+                      <div className="vacante-actions">
+                        <button 
+                          className="favorite-btn active"
+                          onClick={(e) => handleToggleFavorite(favorito.puesto_id, e)}
+                          title="Quitar de favoritos"
+                        >
+                          ❤️
+                        </button>
+                        <button 
+                          className="apply-btn"
+                          onClick={() => handleApplyClick({
+                            idPuestos: favorito.puesto_id,
+                            Tipo_Puesto: favorito.Tipo_Puesto,
+                            Nombre_Empresa: favorito.Nombre_Empresa,
+                            Ubicacion: favorito.Ubicacion,
+                            Salario: favorito.Salario,
+                            Horario: favorito.Horario
+                          })}
+                        >
+                          Postularse
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

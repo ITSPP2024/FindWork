@@ -752,6 +752,165 @@ app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole(
   });
 });
 
+// ========================================
+// RUTAS DE FAVORITOS
+// ========================================
+
+// Obtener favoritos del empleado
+app.get('/api/empleado/favoritos/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que el usuario solo puede ver sus propios favoritos
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes ver tus propios favoritos' });
+  }
+
+  if (!isMySQL) {
+    // Datos simulados - vacantes favoritas
+    const favoritosSimulados = [
+      {
+        idFavorito: 1,
+        puesto_id: 1,
+        fecha_agregado: '2024-01-15T10:00:00.000Z',
+        Tipo_Puesto: 'Desarrollador Frontend',
+        Nombre_Empresa: 'Tech Solutions',
+        Ubicacion: 'Ciudad de México',
+        Salario: '45000',
+        Horario: 'Tiempo completo'
+      },
+      {
+        idFavorito: 2,
+        puesto_id: 3,
+        fecha_agregado: '2024-01-16T14:30:00.000Z',
+        Tipo_Puesto: 'Diseñador UX/UI',
+        Nombre_Empresa: 'Creative Studio',
+        Ubicacion: 'Guadalajara',
+        Salario: '38000',
+        Horario: 'Tiempo completo'
+      }
+    ];
+    return res.json(favoritosSimulados);
+  }
+
+  const query = `
+    SELECT 
+      f.idFavorito,
+      f.puesto_id,
+      f.fecha_agregado,
+      p.Tipo_Puesto,
+      e.Nombre_Empresa,
+      p.Ubicacion,
+      p.Salario,
+      p.Horario
+    FROM favoritos f
+    JOIN puestos p ON f.puesto_id = p.idPuestos
+    JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa
+    WHERE f.candidato_id = ?
+    ORDER BY f.fecha_agregado DESC
+  `;
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo favoritos:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    res.json(results);
+  });
+});
+
+// Verificar si una vacante es favorita
+app.get('/api/empleado/favorito/:empleadoId/:vacanteId', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { empleadoId, vacanteId } = req.params;
+  
+  // Verificar que el usuario solo puede verificar sus propios favoritos
+  if (req.user.id !== parseInt(empleadoId)) {
+    return res.status(403).json({ error: 'Solo puedes verificar tus propios favoritos' });
+  }
+
+  if (!isMySQL) {
+    // En simulación, solo las vacantes 1 y 3 son favoritas
+    const isFavorite = [1, 3].includes(parseInt(vacanteId));
+    return res.json({ isFavorite });
+  }
+
+  const query = 'SELECT idFavorito FROM favoritos WHERE candidato_id = ? AND puesto_id = ?';
+  
+  db.query(query, [empleadoId, vacanteId], (err, results) => {
+    if (err) {
+      console.error('Error verificando favorito:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    res.json({ isFavorite: results.length > 0 });
+  });
+});
+
+// Agregar/quitar favorito (toggle)
+app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { puesto_id } = req.body;
+  const candidato_id = req.user.id;
+  
+  if (!puesto_id) {
+    return res.status(400).json({ error: 'ID del puesto es requerido' });
+  }
+
+  if (!isMySQL) {
+    // Simulación para modo sin MySQL
+    const isCurrentlyFavorite = [1, 3].includes(parseInt(puesto_id));
+    
+    return res.json({
+      message: isCurrentlyFavorite ? 'Favorito eliminado exitosamente' : 'Favorito agregado exitosamente',
+      action: isCurrentlyFavorite ? 'removed' : 'added',
+      isFavorite: !isCurrentlyFavorite
+    });
+  }
+
+  // Verificar si ya es favorito
+  const checkQuery = 'SELECT idFavorito FROM favoritos WHERE candidato_id = ? AND puesto_id = ?';
+  
+  db.query(checkQuery, [candidato_id, puesto_id], (err, results) => {
+    if (err) {
+      console.error('Error verificando favorito:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    if (results.length > 0) {
+      // Ya es favorito, lo eliminamos
+      const deleteQuery = 'DELETE FROM favoritos WHERE candidato_id = ? AND puesto_id = ?';
+      
+      db.query(deleteQuery, [candidato_id, puesto_id], (err, result) => {
+        if (err) {
+          console.error('Error eliminando favorito:', err);
+          return res.status(500).json({ error: 'Error eliminando favorito' });
+        }
+
+        res.json({
+          message: 'Favorito eliminado exitosamente',
+          action: 'removed',
+          isFavorite: false
+        });
+      });
+    } else {
+      // No es favorito, lo agregamos
+      const insertQuery = 'INSERT INTO favoritos (candidato_id, puesto_id, fecha_agregado) VALUES (?, ?, CURRENT_TIMESTAMP)';
+      
+      db.query(insertQuery, [candidato_id, puesto_id], (err, result) => {
+        if (err) {
+          console.error('Error agregando favorito:', err);
+          return res.status(500).json({ error: 'Error agregando favorito' });
+        }
+
+        res.json({
+          message: 'Favorito agregado exitosamente',
+          action: 'added',
+          isFavorite: true
+        });
+      });
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
