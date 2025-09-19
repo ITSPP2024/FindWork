@@ -335,6 +335,11 @@ app.use('/uploads', authenticateToken, (req, res, next) => {
 app.post('/api/login', async (req, res) => {
   const { email, password, tipoUsuario } = req.body;
 
+  // Validar tipo de usuario primero
+  if (!tipoUsuario || !['empleado', 'empresa', 'admin'].includes(tipoUsuario)) {
+    return res.status(400).json({ error: 'Tipo de usuario inválido' });
+  }
+
   // Si MySQL no está disponible, usar datos simulados
   if (!isMySQL) {
     let user = null;
@@ -343,6 +348,7 @@ app.post('/api/login', async (req, res) => {
     if (email === 'admin' && password === 'admin' && tipoUsuario === 'admin') {
       user = { id: 1, nombre: 'Administrador', email: 'admin', tipo: 'admin' };
     } else {
+      
       // Buscar según el tipo de usuario seleccionado
       if (tipoUsuario === 'empleado') {
         user = datosSimulados.empleados.find(emp => emp.email === email);
@@ -433,7 +439,7 @@ app.post('/api/login', async (req, res) => {
         });
       } else {
         // Tipo de usuario inválido
-        resolve(null);
+        reject(new Error('Tipo de usuario inválido'));
       }
     });
   };
