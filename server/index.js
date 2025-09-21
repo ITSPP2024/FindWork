@@ -366,12 +366,12 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
       ...empleado,
       Nombre_Candidatos: empleado.nombre,
       Correo_Candidatos: empleado.email,
-      Numero_Candidatos: '555-0123',
-      Experiencia: 'Desarrollador con 3 años de experiencia en tecnologías web',
+      Numero_Candidatos: empleado.telefono || '555-0123',
+      Experiencia: empleado.experiencia || 'Sin experiencia registrada',
       Documentos: 'CV actualizado disponible',
-      descripcion: 'Estudiante apasionado por la tecnología con experiencia en desarrollo web',
-      foto_perfil: null,
-      Observaciones: 'Candidato proactivo y con ganas de aprender'
+      descripcion: empleado.descripcion || 'Sin descripción personal',
+      foto_perfil: empleado.foto_perfil || null,
+      Observaciones: 'Información del perfil'
     });
   }
   
