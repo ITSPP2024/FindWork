@@ -425,7 +425,7 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
       e.Experiencia AS experiencia,
       c.foto_perfil
     FROM candidatos c 
-    LEFT JOIN expedientes e ON c.idCandidatos = e.candidatos_id 
+    LEFT JOIN expedientes e ON c.idCandidatos = e.candidato_id 
     WHERE c.idCandidatos = ?
   `;
   
