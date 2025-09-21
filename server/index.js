@@ -1,5 +1,5 @@
 const express = require('express');
-const mysql = require('mysql2');
+const { Pool } = require('pg');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -33,23 +33,27 @@ fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
 
-// Configuración de conexión a MySQL
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'admin',
-  database: 'powerman'
+// Configuración de conexión a PostgreSQL
+const db = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Conectar a la base de datos
-db.connect((err) => {
-  if (err) {
-    console.error('⚠️  Error conectando a MySQL:', err.message);
+// Variable para verificar conexión
+let isMySQL = false; // Ahora usando PostgreSQL
+
+// Verificar conexión a la base de datos
+db.connect()
+  .then(client => {
+    console.log('✅ Conectado a PostgreSQL database');
+    isMySQL = true; // Ahora significa "base de datos real conectada"
+    client.release();
+  })
+  .catch(err => {
+    console.error('⚠️  Error conectando a PostgreSQL:', err.message);
     console.log('💡 La aplicación funcionará con datos simulados.');
-    return;
-  }
-  console.log('✅ Conectado a MySQL database');
-});
+    isMySQL = false;
+  });
 
 // JWT Secret
 // JWT Secret con fallback para desarrollo
@@ -379,7 +383,7 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     SELECT c.*, e.Documentos, e.Fecha_Registro, e.Observaciones, e.Experiencia 
     FROM candidatos c 
     LEFT JOIN expedientes e ON c.idCandidatos = e.candidatos_id 
-    WHERE c.idCandidatos = ?
+    WHERE c.idCandidatos = $1
   `;
   
   db.query(query, [id], (err, results) => {
