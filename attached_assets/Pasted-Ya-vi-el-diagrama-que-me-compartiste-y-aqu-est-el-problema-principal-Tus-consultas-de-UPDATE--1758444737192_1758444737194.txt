@@ -1,0 +1,136 @@
+Ya vi el diagrama que me compartiste, y aquí está el problema principal:
+
+Tus **consultas de UPDATE e INSERT están usando campos que no existen en las tablas de tu esquema actual (powerman).
+
+Ejemplo 1:
+
+En tu código pones:
+
+UPDATE candidatos 
+SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?, Experiencia = ?
+WHERE idCandidatos = ?
+
+
+Pero en tu tabla candidatos (según el diagrama) los campos son:
+
+idCandidatos
+
+Nombre_Candidatos
+
+Correo_Candidatos
+
+Numero_Candidatos
+
+Experiencia_Text (no existe "Experiencia", parece que está en expedientes)
+
+descripcion
+
+foto_perfil
+
+fecha_actualizacion
+
+Tipo_Usuario
+
+👉 El campo Experiencia no existe en candidatos, solo en la tabla expedientes.
+Por eso MySQL te devuelve error al hacer el update.
+
+Ejemplo 2:
+
+En tu código para empresa:
+
+UPDATE empresa 
+SET Nombre_Empresa = ?, descripcion = ?, Telefono_Empresa = ?, Ubicacion = ?
+WHERE idEmpresa = ?
+
+
+En la tabla empresa, los campos son:
+
+idEmpresa
+
+Nombre_Empresa
+
+Correo_Empresa
+
+Numero_Empresa
+
+Telefono_Empresa
+
+Ubicacion
+
+foto_perfil
+
+descripcion
+
+fecha_actualizacion
+
+Tipo_Usuario
+
+✅ Aquí sí existen los campos, este update debería funcionar.
+
+Ejemplo 3:
+
+Tu INSERT en puestos:
+
+INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)
+
+
+Pero en tu tabla puestos los campos son:
+
+idPuestos
+
+Tipo_Puesto
+
+Salario
+
+Horario
+
+Ubicacion
+
+👉 No tienes el campo empresa_idEmpresa en la tabla.
+Eso te va a dar error siempre.
+
+Ejemplo 4:
+
+Aplicaciones:
+Tu código hace:
+
+INSERT INTO aplicaciones (candidato_id, puesto_id, carta_presentacion, salario_esperado, disponibilidad)
+
+
+En la tabla aplicaciones existen:
+
+idAplicacion
+
+candidato_id
+
+puesto_id
+
+carta_presentacion
+
+salario_esperado
+
+disponibilidad
+
+notas_empresa
+
+estado
+
+fecha_aplicacion
+
+fecha_actualizacion
+
+✅ Esto está bien, pero recuerda que estado es ENUM, si tu aplicación luego lo quiere actualizar, tiene que coincidir con los valores válidos en el ENUM.
+
+Qué hacer para arreglarlo:
+
+Revisa que los campos en tus queries EXISTAN en la tabla.
+
+Si quieres guardar experiencia de un candidato, debes hacerlo en expedientes, no en candidatos.
+
+Si quieres relacionar puestos con empresa, necesitas agregar un campo empresa_id en la tabla puestos.
+
+Sincroniza tu base con el código.
+
+O bien modificas las tablas (ALTER TABLE) para que coincidan con lo que espera tu código.
+
+O bien cambias el código para que use los nombres correctos de los campos.

@@ -175,110 +175,7 @@ setTimeout(() => {
   });
 }, 1000);
 
-const datosSimulados = {
-  empleados: [
-    { id: 1, nombre: 'Juan Pérez', email: 'juan@email.com', tipo: 'empleado' },
-    { id: 2, nombre: 'María García', email: 'maria@email.com', tipo: 'empleado' },
-    { id: 3, nombre: 'Joshua', email: 'Joshua@gmail.com', tipo: 'empleado' },
-    { id: 1234, nombre: 'PowerMan', email: 'Powerman@gmail.com', tipo: 'empleado' }
-  ],
-  empresas: [
-    { id: 1, nombre: 'Tech Solutions', email: 'admin@techsolutions.com', tipo: 'empresa' },
-    { id: 2, nombre: 'InnovaCorp', email: 'hr@innovacorp.com', tipo: 'empresa' }
-  ],
-  vacantes: [
-    { 
-      idPuestos: 1, 
-      Tipo_Puesto: 'Desarrollador Frontend', 
-      Salario: '45000', 
-      Horario: 'Tiempo completo', 
-      Ubicacion: 'Ciudad de México', 
-      Nombre_Empresa: 'Tech Solutions',
-      experiencia: 'Mid Level',
-      fechaCreacion: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString() // Hace 8 días
-    },
-    { 
-      idPuestos: 2, 
-      Tipo_Puesto: 'Diseñador UX/UI', 
-      Salario: '38000', 
-      Horario: 'Tiempo completo', 
-      Ubicacion: 'Guadalajara', 
-      Nombre_Empresa: 'Creative Studio',
-      experiencia: 'Junior',
-      fechaCreacion: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() // Hace 2 días
-    },
-    {
-      idPuestos: 3,
-      Tipo_Puesto: 'Desarrollador Backend',
-      Salario: '55000',
-      Horario: 'Tiempo completo',
-      Ubicacion: 'Monterrey',
-      Nombre_Empresa: 'DataCorp',
-      experiencia: 'Senior',
-      fechaCreacion: new Date(Date.now() - 0.5 * 24 * 60 * 60 * 1000).toISOString() // Hace 12 horas (hoy)
-    },
-    {
-      idPuestos: 4,
-      Tipo_Puesto: 'Analista de Datos',
-      Salario: '42000',
-      Horario: 'Medio tiempo',
-      Ubicacion: 'Ciudad de México',
-      Nombre_Empresa: 'Analytics Pro',
-      experiencia: 'Mid Level',
-      fechaCreacion: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() // Hace 3 días
-    },
-    {
-      idPuestos: 5,
-      Tipo_Puesto: 'DevOps Engineer',
-      Salario: '65000',
-      Horario: 'Tiempo completo',
-      Ubicacion: 'Remoto',
-      Nombre_Empresa: 'CloudTech',
-      experiencia: 'Senior',
-      fechaCreacion: new Date(Date.now() - 0.2 * 24 * 60 * 60 * 1000).toISOString() // Hace 5 horas (hoy)
-    },
-    {
-      idPuestos: 6,
-      Tipo_Puesto: 'Desarrollador Mobile',
-      Salario: '48000',
-      Horario: 'Tiempo completo',
-      Ubicacion: 'Tijuana',
-      Nombre_Empresa: 'AppVentures',
-      experiencia: 'Mid Level',
-      fechaCreacion: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() // Hace 4 días
-    },
-    {
-      idPuestos: 7,
-      Tipo_Puesto: 'Practicante Desarrollo',
-      Salario: '15000',
-      Horario: 'Prácticas',
-      Ubicacion: 'Puebla',
-      Nombre_Empresa: 'StartupLab',
-      experiencia: 'Entry Level',
-      fechaCreacion: new Date(Date.now() - 0.1 * 24 * 60 * 60 * 1000).toISOString() // Hace 2 horas (hoy)
-    },
-    {
-      idPuestos: 8,
-      Tipo_Puesto: 'Tech Lead',
-      Salario: '85000',
-      Horario: 'Tiempo completo',
-      Ubicacion: 'Mérida',
-      Nombre_Empresa: 'InnovaCorp',
-      experiencia: 'Lead',
-      fechaCreacion: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString() // Hace 10 días
-    },
-    {
-      idPuestos: 9,
-      Tipo_Puesto: 'QA Engineer',
-      Salario: '40000',
-      Horario: 'Tiempo completo',
-      Ubicacion: 'Ciudad de México',
-      Nombre_Empresa: 'TestCorp',
-      experiencia: 'Mid Level',
-      fechaCreacion: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString() // Hace 15 días
-    }
-  ]
-};
+const datosSimulados = {};
 
 // Servir archivos estáticos de forma segura (después de definir authenticateToken)
 app.use('/uploads', authenticateToken, (req, res, next) => {
@@ -531,11 +428,11 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 
   const updateQuery = `
     UPDATE candidatos 
-    SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?, Experiencia = ?
+    SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?
     WHERE idCandidatos = ?
   `;
   
-  db.query(updateQuery, [nombre, descripcion, telefono, experiencia, id], (err, result) => {
+  db.query(updateQuery, [nombre, descripcion, telefono, id], (err, result) => {
     if (err) {
       console.error('Error actualizando perfil:', err);
       return res.status(500).json({ error: 'Error actualizando perfil' });
@@ -1151,105 +1048,7 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
   if (!isMySQL) {
     // Datos simulados más realistas
     const aplicacionesSimuladas = [
-      {
-        idAplicacion: 1,
-        candidato_nombre: 'Juan Pérez',
-        candidato_email: 'juan@email.com',
-        candidato_telefono: '555-0123',
-        puesto_titulo: 'Desarrollador Frontend',
-        estado: 'pendiente',
-        fecha_aplicacion: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 45000,
-        disponibilidad: 'Inmediata',
-        carta_presentacion: 'Estimado equipo de Tech Solutions,\n\nMe dirijo a ustedes para expresar mi interés en la posición de Desarrollador Frontend. Con más de 3 años de experiencia en React, JavaScript y TypeScript, creo que puedo contribuir significativamente a su equipo.\n\nHe trabajado en proyectos similares donde implementé interfaces responsive, optimicé el rendimiento y colaboré estrechamente con equipos de diseño UX/UI. Mi pasión por el desarrollo frontend me ha llevado a mantenerme actualizado con las últimas tecnologías y mejores prácticas.\n\nQuedo a su disposición para una entrevista y espero poder discutir cómo mis habilidades pueden beneficiar a su empresa.\n\nSaludos cordiales,\nJuan Pérez',
-        notas_empresa: null
-      },
-      {
-        idAplicacion: 2,
-        candidato_nombre: 'María García',
-        candidato_email: 'maria@email.com',
-        candidato_telefono: '555-0456',
-        puesto_titulo: 'Diseñador UX/UI',
-        estado: 'revisando',
-        fecha_aplicacion: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 38000,
-        disponibilidad: 'En 2 semanas',
-        carta_presentacion: 'Hola equipo,\n\nSoy una diseñadora UX/UI apasionada con 4 años de experiencia creando experiencias digitales intuitivas y atractivas. He trabajado con equipos multidisciplinarios para diseñar productos que realmente impacten a los usuarios.\n\nMi enfoque se centra en la investigación de usuarios, prototipado rápido y testing constante. Domino herramientas como Figma, Adobe XD, y tengo conocimientos básicos de HTML/CSS que me permiten comunicarme efectivamente con desarrolladores.\n\nMe emociona la oportunidad de contribuir con mis habilidades a proyectos innovadores.\n\nUn saludo,\nMaría García',
-        notas_empresa: 'Candidata muy prometedora, portfolio impresionante. Programar entrevista técnica.'
-      },
-      {
-        idAplicacion: 3,
-        candidato_nombre: 'Carlos López',
-        candidato_email: 'carlos.lopez@email.com',
-        candidato_telefono: '555-0789',
-        puesto_titulo: 'Desarrollador Backend',
-        estado: 'entrevista',
-        fecha_aplicacion: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 52000,
-        disponibilidad: 'En 1 mes',
-        carta_presentacion: 'Buenos días,\n\nTengo 5 años de experiencia desarrollando sistemas backend robustos y escalables. Mi expertise incluye Node.js, Python, bases de datos SQL y NoSQL, y arquitecturas de microservicios.\n\nEn mi trabajo anterior lideré la migración de un sistema monolítico a microservicios, reduciendo los tiempos de respuesta en un 40% y mejorando la escalabilidad del sistema.\n\nEstoy emocionado por la oportunidad de aplicar mi experiencia en un nuevo desafío.',
-        notas_empresa: 'Excelente candidato. Entrevista técnica programada para mañana. Muy buenas referencias.'
-      },
-      {
-        idAplicacion: 4,
-        candidato_nombre: 'Ana Rodríguez',
-        candidato_email: 'ana.rodriguez@email.com',
-        candidato_telefono: '555-0321',
-        puesto_titulo: 'Data Scientist',
-        estado: 'aceptado',
-        fecha_aplicacion: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 65000,
-        disponibilidad: 'Inmediata',
-        carta_presentacion: 'Saludos,\n\nSoy Data Scientist con maestría en Estadística y 6 años de experiencia transformando datos en insights accionables. He trabajado con Python, R, SQL, y plataformas cloud como AWS y GCP.\n\nMi experiencia incluye desarrollo de modelos predictivos, análisis de series temporales, y implementación de algoritmos de machine learning en producción.\n\nBusco un rol donde pueda aplicar mis conocimientos para generar valor real para el negocio.',
-        notas_empresa: '¡CONTRATADA! Comenzará el próximo lunes. Excelente fit cultural y técnico.'
-      },
-      {
-        idAplicacion: 5,
-        candidato_nombre: 'Pedro Martín',
-        candidato_email: 'pedro.martin@email.com',
-        candidato_telefono: '555-0654',
-        puesto_titulo: 'DevOps Engineer',
-        estado: 'rechazado',
-        fecha_aplicacion: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 58000,
-        disponibilidad: 'En 3 semanas',
-        carta_presentacion: 'Hola,\n\nTengo experiencia en DevOps con Docker, Kubernetes, CI/CD pipelines, y monitoreo de infraestructura. He automatizado despliegues y mejorado la confiabilidad de sistemas en producción.\n\nBusco una oportunidad para crecer profesionalmente y contribuir a la evolución tecnológica de la empresa.',
-        notas_empresa: 'Buen candidato técnicamente pero busca un salario fuera de nuestro rango. No hay match en expectativas.'
-      }
-    ];
-    return res.json(aplicacionesSimuladas);
-  }
-
-  const query = `
-    SELECT 
-      a.idAplicacion,
-      a.estado,
-      a.fecha_aplicacion,
-      a.salario_esperado,
-      a.disponibilidad,
-      a.carta_presentacion,
-      a.notas_empresa,
-      c.Nombre_Candidatos as candidato_nombre,
-      c.Correo_Candidatos as candidato_email,
-      c.Numero_Candidatos as candidato_telefono,
-      p.Tipo_Puesto as puesto_titulo,
-      p.idPuestos as puesto_id
-    FROM aplicaciones a
-    JOIN candidatos c ON a.candidato_id = c.idCandidatos
-    JOIN puestos p ON a.puesto_id = p.idPuestos
-    WHERE p.empresa_idEmpresa = ?
-    ORDER BY a.fecha_aplicacion DESC
-  `;
-
-  db.query(query, [id], (err, results) => {
-    if (err) {
-      console.error('Error obteniendo aplicaciones de empresa:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-
-    res.json(results);
-  });
-});
+      {});
 
 // Actualizar estado de aplicación (solo empresas)
 app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole('empresa'), (req, res) => {
@@ -1264,72 +1063,7 @@ app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole(
   if (!isMySQL) {
     // Simular persistencia actualizando los datos en memoria
     let aplicacionesSimuladas = [
-      {
-        idAplicacion: 1,
-        candidato_nombre: 'Juan Pérez',
-        candidato_email: 'juan@email.com',
-        candidato_telefono: '555-0123',
-        puesto_titulo: 'Desarrollador Frontend',
-        estado: 'pendiente',
-        fecha_aplicacion: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 45000,
-        disponibilidad: 'Inmediata',
-        carta_presentacion: 'Estimado equipo de Tech Solutions,\n\nMe dirijo a ustedes para expresar mi interés en la posición de Desarrollador Frontend. Con más de 3 años de experiencia en React, JavaScript y TypeScript, creo que puedo contribuir significativamente a su equipo.\n\nHe trabajado en proyectos similares donde implementé interfaces responsive, optimicé el rendimiento y colaboré estrechamente con equipos de diseño UX/UI. Mi pasión por el desarrollo frontend me ha llevado a mantenerme actualizado con las últimas tecnologías y mejores prácticas.\n\nQuedo a su disposición para una entrevista y espero poder discutir cómo mis habilidades pueden beneficiar a su empresa.\n\nSaludos cordiales,\nJuan Pérez',
-        notas_empresa: null
-      },
-      {
-        idAplicacion: 2,
-        candidato_nombre: 'María García',
-        candidato_email: 'maria@email.com',
-        candidato_telefono: '555-0456',
-        puesto_titulo: 'Diseñador UX/UI',
-        estado: 'revisando',
-        fecha_aplicacion: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 38000,
-        disponibilidad: 'En 2 semanas',
-        carta_presentacion: 'Hola equipo,\n\nSoy una diseñadora UX/UI apasionada con 4 años de experiencia creando experiencias digitales intuitivas y atractivas. He trabajado con equipos multidisciplinarios para diseñar productos que realmente impacten a los usuarios.\n\nMi enfoque se centra en la investigación de usuarios, prototipado rápido y testing constante. Domino herramientas como Figma, Adobe XD, y tengo conocimientos básicos de HTML/CSS que me permiten comunicarme efectivamente con desarrolladores.\n\nMe emociona la oportunidad de contribuir con mis habilidades a proyectos innovadores.\n\nUn saludo,\nMaría García',
-        notas_empresa: 'Candidata muy prometedora, portfolio impresionante. Programar entrevista técnica.'
-      },
-      {
-        idAplicacion: 3,
-        candidato_nombre: 'Carlos López',
-        candidato_email: 'carlos.lopez@email.com',
-        candidato_telefono: '555-0789',
-        puesto_titulo: 'Desarrollador Backend',
-        estado: 'entrevista',
-        fecha_aplicacion: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 52000,
-        disponibilidad: 'En 1 mes',
-        carta_presentacion: 'Buenos días,\n\nTengo 5 años de experiencia desarrollando sistemas backend robustos y escalables. Mi expertise incluye Node.js, Python, bases de datos SQL y NoSQL, y arquitecturas de microservicios.\n\nEn mi trabajo anterior lideré la migración de un sistema monolítico a microservicios, reduciendo los tiempos de respuesta en un 40% y mejorando la escalabilidad del sistema.\n\nEstoy emocionado por la oportunidad de aplicar mi experiencia en un nuevo desafío.',
-        notas_empresa: 'Excelente candidato. Entrevista técnica programada para mañana. Muy buenas referencias.'
-      },
-      {
-        idAplicacion: 4,
-        candidato_nombre: 'Ana Rodríguez',
-        candidato_email: 'ana.rodriguez@email.com',
-        candidato_telefono: '555-0321',
-        puesto_titulo: 'Data Scientist',
-        estado: 'aceptado',
-        fecha_aplicacion: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 65000,
-        disponibilidad: 'Inmediata',
-        carta_presentacion: 'Saludos,\n\nSoy Data Scientist con maestría en Estadística y 6 años de experiencia transformando datos en insights accionables. He trabajado con Python, R, SQL, y plataformas cloud como AWS y GCP.\n\nMi experiencia incluye desarrollo de modelos predictivos, análisis de series temporales, y implementación de algoritmos de machine learning en producción.\n\nBusco un rol donde pueda aplicar mis conocimientos para generar valor real para el negocio.',
-        notas_empresa: '¡CONTRATADA! Comenzará el próximo lunes. Excelente fit cultural y técnico.'
-      },
-      {
-        idAplicacion: 5,
-        candidato_nombre: 'Pedro Martín',
-        candidato_email: 'pedro.martin@email.com',
-        candidato_telefono: '555-0654',
-        puesto_titulo: 'DevOps Engineer',
-        estado: 'rechazado',
-        fecha_aplicacion: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-        salario_esperado: 58000,
-        disponibilidad: 'En 3 semanas',
-        carta_presentacion: 'Hola,\n\nTengo experiencia en DevOps con Docker, Kubernetes, CI/CD pipelines, y monitoreo de infraestructura. He automatizado despliegues y mejorado la confiabilidad de sistemas en producción.\n\nBusco una oportunidad para crecer profesionalmente y contribuir a la evolución tecnológica de la empresa.',
-        notas_empresa: 'Buen candidato técnicamente pero busca un salario fuera de nuestro rango. No hay match en expectativas.'
-      }
-    ];
+      ];
 
     // Verificar que la aplicación existe y pertenece a la empresa (simulado)
     const aplicacion = aplicacionesSimuladas.find(app => 
