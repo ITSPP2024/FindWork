@@ -429,22 +429,61 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     });
   }
 
-  const updateQuery = `
-    UPDATE candidatos 
-    SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?
-    WHERE idCandidatos = ?
-  `;
-  
-  db.query(updateQuery, [nombre, descripcion, telefonoString, id], (err, result) => {
-    if (err) {
-      console.error('Error actualizando perfil:', err);
+  // Usar transacción para atomicidad
+  db.beginTransaction((transactionErr) => {
+    if (transactionErr) {
+      console.error('Error iniciando transacción:', transactionErr);
       return res.status(500).json({ error: 'Error actualizando perfil' });
     }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
-    }
     
-    res.json({ message: 'Perfil actualizado exitosamente' });
+    // Actualizar candidatos
+    const updateCandidatos = `
+      UPDATE candidatos 
+      SET Nombre_Candidatos = ?, descripcion = ?, Numero_Candidatos = ?
+      WHERE idCandidatos = ?
+    `;
+    
+    db.query(updateCandidatos, [nombre, descripcion, telefonoString, id], (err, result) => {
+      if (err) {
+        console.error('Error actualizando candidatos:', err);
+        return db.rollback(() => {
+          res.status(500).json({ error: 'Error actualizando perfil' });
+        });
+      }
+      if (result.affectedRows === 0) {
+        return db.rollback(() => {
+          res.status(404).json({ error: 'Perfil no encontrado' });
+        });
+      }
+      
+      // UPSERT experiencia en expedientes (actualizar o crear)
+      const upsertExpedientes = `
+        INSERT INTO expedientes (candidatos_id, Experiencia)
+        VALUES (?, ?)
+        ON DUPLICATE KEY UPDATE Experiencia = VALUES(Experiencia)
+      `;
+      
+      db.query(upsertExpedientes, [id, experiencia], (err2, result2) => {
+        if (err2) {
+          console.error('Error actualizando experiencia:', err2);
+          return db.rollback(() => {
+            res.status(500).json({ error: 'Error actualizando experiencia' });
+          });
+        }
+        
+        // Confirmar transacción
+        db.commit((commitErr) => {
+          if (commitErr) {
+            console.error('Error confirmando transacción:', commitErr);
+            return db.rollback(() => {
+              res.status(500).json({ error: 'Error completando actualización' });
+            });
+          }
+          
+          res.json({ message: 'Perfil actualizado exitosamente' });
+        });
+      });
+    });
   });
 });
 
