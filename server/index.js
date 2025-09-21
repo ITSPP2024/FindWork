@@ -175,7 +175,51 @@ setTimeout(() => {
   });
 }, 1000);
 
-const datosSimulados = {};
+const datosSimulados = {
+  empleados: [
+    {
+      id: 1,
+      nombre: 'Joshua Quiroz Burgos',
+      email: 'Joshua@gmail.com',
+      telefono: '6674863190',
+      descripcion: 'Desarrollador full-stack con experiencia en React y Node.js',
+      experiencia: '2 años de experiencia en desarrollo web',
+      foto_perfil: null
+    },
+    {
+      id: 2,
+      nombre: 'María González',
+      email: 'maria@email.com',
+      telefono: '555-0234',
+      descripcion: 'Diseñadora UX/UI especializada en aplicaciones móviles',
+      experiencia: '3 años en diseño de interfaces',
+      foto_perfil: null
+    }
+  ],
+  empresas: [
+    {
+      id: 1,
+      nombre: 'TechCorp SA',
+      email: 'info@techcorp.com',
+      telefono: '555-0100',
+      ubicacion: 'Ciudad de México',
+      descripcion: 'Empresa líder en desarrollo de software',
+      foto_perfil: null
+    }
+  ],
+  vacantes: [
+    {
+      idPuestos: 1,
+      Nombre_Puesto: 'Desarrollador Frontend',
+      Descripcion_Puesto: 'Buscamos desarrollador con experiencia en React',
+      Nivel_Requerido: 'Junior',
+      Experiencia_Requerida: '1-2 años',
+      Tipo_Puesto: 'Tiempo completo',
+      Nombre_Empresa: 'TechCorp SA',
+      Ubicacion: 'Ciudad de México'
+    }
+  ]
+};
 
 // Servir archivos estáticos de forma segura (después de definir authenticateToken)
 app.use('/uploads', authenticateToken, (req, res, next) => {
