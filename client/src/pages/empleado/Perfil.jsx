@@ -66,11 +66,11 @@ const EmpleadoPerfil = () => {
           <div className="perfil-card">
             <div className="perfil-header">
               <div className="perfil-avatar">
-                {perfil?.Nombre_Candidatos?.charAt(0) || 'U'}
+                {perfil?.nombre?.charAt(0) || 'U'}
               </div>
               <div className="perfil-info">
-                <h3>{perfil?.Nombre_Candidatos || 'Usuario'}</h3>
-                <p>{perfil?.Correo_Candidatos || user?.email}</p>
+                <h3>{perfil?.nombre || 'Usuario'}</h3>
+                <p>{perfil?.correo || user?.email}</p>
               </div>
             </div>
 
@@ -93,11 +93,11 @@ const EmpleadoPerfil = () => {
                 <div className="info-grid">
                   <div className="info-item">
                     <label>Teléfono:</label>
-                    <span>{perfil?.Numero_Candidatos || 'No especificado'}</span>
+                    <span>{perfil?.telefono || 'No especificado'}</span>
                   </div>
                   <div className="info-item">
                     <label>Email:</label>
-                    <span>{perfil?.Correo_Candidatos || user?.email}</span>
+                    <span>{perfil?.correo || user?.email}</span>
                   </div>
                 </div>
               </div>
@@ -116,8 +116,8 @@ const EmpleadoPerfil = () => {
               <div className="perfil-section">
                 <h4>Experiencia Laboral</h4>
                 <div className="experiencia-content">
-                  {perfil?.Experiencia ? (
-                    <p>{perfil.Experiencia}</p>
+                  {perfil?.experiencia ? (
+                    <p>{perfil.experiencia}</p>
                   ) : (
                     <p className="no-info">Aún no has agregado experiencia laboral</p>
                   )}

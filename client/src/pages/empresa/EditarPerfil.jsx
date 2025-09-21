@@ -32,10 +32,10 @@ const EditarPerfilEmpresa = () => {
       const data = response.data;
       
       setPerfil({
-        nombre: data.Nombre_Empresa || data.nombre || '',
+        nombre: data.nombre || '',
         descripcion: data.descripcion || '',
-        telefono: data.Telefono_Empresa || data.telefono || '',
-        ubicacion: data.Ubicacion || data.ubicacion || '',
+        telefono: data.telefono || '',
+        ubicacion: data.ubicacion || '',
         foto_perfil: data.foto_perfil
       });
       if (data.foto_perfil) {

@@ -32,10 +32,10 @@ const EditarPerfil = () => {
       const data = response.data;
       
       setPerfil({
-        nombre: data.Nombre_Candidatos || data.nombre || '',
+        nombre: data.nombre || '',
         descripcion: data.descripcion || '',
-        telefono: data.Numero_Candidatos || data.telefono || '',
-        experiencia: data.Experiencia || data.experiencia || '',
+        telefono: data.telefono || '',
+        experiencia: data.experiencia || '',
         foto_perfil: data.foto_perfil
       });
       if (data.foto_perfil) {

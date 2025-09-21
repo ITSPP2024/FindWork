@@ -48,11 +48,11 @@ const EmpresaPerfil = () => {
           <div className="perfil-card">
             <div className="perfil-header">
               <div className="perfil-avatar empresa-avatar">
-                {perfil?.Nombre_Empresa?.charAt(0) || 'E'}
+                {perfil?.nombre?.charAt(0) || 'E'}
               </div>
               <div className="perfil-info">
-                <h3>{perfil?.Nombre_Empresa || 'Empresa'}</h3>
-                <p>{perfil?.Correo_Empresa || user?.email}</p>
+                <h3>{perfil?.nombre || 'Empresa'}</h3>
+                <p>{perfil?.correo || user?.email}</p>
               </div>
             </div>
 
@@ -62,15 +62,15 @@ const EmpresaPerfil = () => {
                 <div className="info-grid">
                   <div className="info-item">
                     <label>Teléfono:</label>
-                    <span>{perfil?.Numero_Empresas || 'No especificado'}</span>
+                    <span>{perfil?.telefono || 'No especificado'}</span>
                   </div>
                   <div className="info-item">
                     <label>Email:</label>
-                    <span>{perfil?.Correo_Empresa || user?.email}</span>
+                    <span>{perfil?.correo || user?.email}</span>
                   </div>
                   <div className="info-item">
                     <label>Ubicación:</label>
-                    <span>{perfil?.Ubicacion || 'No especificada'}</span>
+                    <span>{perfil?.ubicacion || 'No especificada'}</span>
                   </div>
                 </div>
               </div>
@@ -78,9 +78,13 @@ const EmpresaPerfil = () => {
               <div className="perfil-section">
                 <h4>Descripción de la Empresa</h4>
                 <div className="descripcion-content">
-                  <p className="no-info">
-                    Agrega una descripción de tu empresa para atraer mejores candidatos
-                  </p>
+                  {perfil?.descripcion ? (
+                    <p>{perfil.descripcion}</p>
+                  ) : (
+                    <p className="no-info">
+                      Agrega una descripción de tu empresa para atraer mejores candidatos
+                    </p>
+                  )}
                 </div>
               </div>
 

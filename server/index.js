@@ -363,20 +363,23 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
       return res.status(404).json({ error: 'Perfil no encontrado' });
     }
     return res.json({
-      ...empleado,
-      Nombre_Candidatos: empleado.nombre,
-      Correo_Candidatos: empleado.email,
-      Numero_Candidatos: empleado.telefono || '555-0123',
-      Experiencia: empleado.experiencia || 'Sin experiencia registrada',
-      Documentos: 'CV actualizado disponible',
+      nombre: empleado.nombre || 'Usuario',
+      correo: empleado.email || 'sin-email@ejemplo.com',
+      telefono: empleado.telefono || '555-0123',
+      experiencia: empleado.experiencia || 'Sin experiencia registrada',
       descripcion: empleado.descripcion || 'Sin descripción personal',
-      foto_perfil: empleado.foto_perfil || null,
-      Observaciones: 'Información del perfil'
+      foto_perfil: empleado.foto_perfil || null
     });
   }
   
   const query = `
-    SELECT c.*, e.Documentos, e.Fecha_Registro, e.Observaciones, e.Experiencia 
+    SELECT 
+      c.Nombre_Candidatos AS nombre,
+      c.Correo_Candidatos AS correo,
+      c.Numero_Candidatos AS telefono,
+      c.descripcion,
+      e.Experiencia AS experiencia,
+      c.foto_perfil
     FROM candidatos c 
     LEFT JOIN expedientes e ON c.idCandidatos = e.candidatos_id 
     WHERE c.idCandidatos = ?
@@ -604,17 +607,26 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
       return res.status(404).json({ error: 'Empresa no encontrada' });
     }
     return res.json({
-      ...empresa,
-      Nombre_Empresa: empresa.nombre,
-      Correo_Empresa: empresa.email,
-      Numero_Empresas: '555-0100',
-      Ubicacion: 'Ciudad de México',
-      descripcion: 'Empresa líder en tecnología con más de 10 años de experiencia',
-      foto_perfil: null
+      nombre: empresa.nombre || 'Empresa',
+      correo: empresa.email || 'sin-email@ejemplo.com',
+      telefono: empresa.telefono || '555-0100',
+      ubicacion: empresa.ubicacion || 'Ciudad de México',
+      descripcion: empresa.descripcion || 'Empresa líder en tecnología',
+      foto_perfil: empresa.foto_perfil || null
     });
   }
   
-  const query = 'SELECT * FROM empresa WHERE idEmpresa = ?';
+  const query = `
+    SELECT 
+      e.Nombre_Empresa AS nombre,
+      e.Correo_Empresa AS correo,
+      e.Telefono_Empresa AS telefono,
+      e.Ubicacion AS ubicacion,
+      e.descripcion,
+      e.foto_perfil
+    FROM empresa e 
+    WHERE e.idEmpresa = ?
+  `;
   
   db.query(query, [id], (err, results) => {
     if (err) {
