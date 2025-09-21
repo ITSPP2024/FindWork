@@ -735,9 +735,9 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion) VALUES (?, ?, ?, ?)';
   
-  db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, result) => {
+  db.query(query, [tipo_puesto, salario, horario, ubicacion], (err, result) => {
     if (err) {
       console.error('Error creando vacante:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
@@ -767,9 +767,9 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.json(vacantesEmpresa);
   }
   
-  const query = 'SELECT * FROM puestos WHERE empresa_idEmpresa = ? ORDER BY idPuestos DESC';
+  const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
   
-  db.query(query, [id], (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
       console.error('Error obteniendo vacantes empresa:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
@@ -1048,7 +1048,8 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
   if (!isMySQL) {
     // Datos simulados más realistas
     const aplicacionesSimuladas = [
-      {});
+      // Datos simulados de aplicaciones
+    ];
 
 // Actualizar estado de aplicación (solo empresas)
 app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole('empresa'), (req, res) => {
