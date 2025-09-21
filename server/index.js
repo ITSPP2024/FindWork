@@ -1050,6 +1050,13 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
     const aplicacionesSimuladas = [
       // Datos simulados de aplicaciones
     ];
+    
+    return res.json(aplicacionesSimuladas);
+  }
+
+  // MySQL query here - placeholder
+  res.json([]);
+});
 
 // Actualizar estado de aplicación (solo empresas)
 app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole('empresa'), (req, res) => {
