@@ -402,16 +402,10 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
   }
   
   if (!isMySQL) {
-    console.log('🔍 Buscando perfil. Usuario logueado:', req.user);
-    console.log('🔍 ID solicitado:', id);
-    console.log('🔍 Datos simulados disponibles:', datosSimulados.empleados.map(emp => ({id: emp.id, email: emp.email})));
-    
     const empleado = datosSimulados.empleados.find(emp => emp.id == id);
     if (!empleado) {
-      console.log('❌ Perfil no encontrado para id:', id);
       return res.status(404).json({ error: 'Perfil no encontrado' });
     }
-    console.log('✅ Perfil encontrado:', empleado);
     return res.json({
       nombre: empleado.nombre || 'Usuario',
       correo: empleado.email || 'sin-email@ejemplo.com',
