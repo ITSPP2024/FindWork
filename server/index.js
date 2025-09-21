@@ -400,6 +400,9 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
   const { id } = req.params;
   const { nombre, descripcion, telefono, experiencia } = req.body;
   
+  // 🔑 CRÍTICO: Convertir telefono a string siempre (problema ChatGPT)
+  const telefonoString = String(telefono);
+  
   // Verificar que el usuario solo puede actualizar su propio perfil
   if (req.user.id !== parseInt(id)) {
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
@@ -432,7 +435,7 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     WHERE idCandidatos = ?
   `;
   
-  db.query(updateQuery, [nombre, descripcion, telefono, id], (err, result) => {
+  db.query(updateQuery, [nombre, descripcion, telefonoString, id], (err, result) => {
     if (err) {
       console.error('Error actualizando perfil:', err);
       return res.status(500).json({ error: 'Error actualizando perfil' });
