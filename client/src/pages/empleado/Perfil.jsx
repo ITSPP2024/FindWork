@@ -103,6 +103,17 @@ const EmpleadoPerfil = () => {
               </div>
 
               <div className="perfil-section">
+                <h4>Descripción Personal</h4>
+                <div className="descripcion-content">
+                  {perfil?.descripcion ? (
+                    <p>{perfil.descripcion}</p>
+                  ) : (
+                    <p className="no-info">Aún no has agregado una descripción personal</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="perfil-section">
                 <h4>Experiencia Laboral</h4>
                 <div className="experiencia-content">
                   {perfil?.Experiencia ? (
