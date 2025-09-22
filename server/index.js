@@ -833,9 +833,9 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion) VALUES (?, ?, ?, ?)';
+  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)';
   
-  db.query(query, [tipo_puesto, salario, horario, ubicacion], (err, result) => {
+  db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, result) => {
     if (err) {
       console.error('Error creando vacante:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
