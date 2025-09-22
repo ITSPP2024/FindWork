@@ -1031,7 +1031,7 @@ app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), as
             FROM aplicaciones a
             JOIN candidatos c ON a.candidato_id = c.idCandidatos
             JOIN puestos p ON a.puesto_id = p.idPuestos
-            JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa
+            JOIN empresa e ON p.empresa_id = e.idEmpresa
             WHERE a.idAplicacion = ?
           `;
 
@@ -1119,7 +1119,7 @@ app.get('/api/empleado/aplicaciones/:id', authenticateToken, requireRole('emplea
       e.Nombre_Empresa as empresa_nombre
     FROM aplicaciones a
     JOIN puestos p ON a.puesto_id = p.idPuestos
-    JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa
+    JOIN empresa e ON p.empresa_id = e.idEmpresa
     WHERE a.candidato_id = ?
     ORDER BY a.fecha_aplicacion DESC
   `;
@@ -1202,7 +1202,7 @@ app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole(
     SELECT a.idAplicacion 
     FROM aplicaciones a
     JOIN puestos p ON a.puesto_id = p.idPuestos
-    WHERE a.idAplicacion = ? AND p.empresa_idEmpresa = ?
+    WHERE a.idAplicacion = ? AND p.empresa_id = ?
   `;
 
   db.query(verifyQuery, [aplicacionId, req.user.id], (err, results) => {
@@ -1284,7 +1284,7 @@ app.get('/api/empleado/favoritos/:id', authenticateToken, requireRole('empleado'
       p.Horario
     FROM favoritos f
     JOIN puestos p ON f.puesto_id = p.idPuestos
-    JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa
+    JOIN empresa e ON p.empresa_id = e.idEmpresa
     WHERE f.candidato_id = ?
     ORDER BY f.fecha_agregado DESC
   `;
