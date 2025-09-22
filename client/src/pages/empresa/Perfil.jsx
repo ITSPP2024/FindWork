@@ -43,10 +43,7 @@ const EmpresaPerfil = () => {
 
       <main className="perfil-main">
         <div className="perfil-container">
-          <div className="perfil-header-actions">
-            <h2>Perfil de Empresa</h2>
-            <Link to="/empresa/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
-          </div>
+          <h2>Perfil de Empresa</h2>
           
           <div className="perfil-card">
             <div className="perfil-header">
@@ -57,6 +54,7 @@ const EmpresaPerfil = () => {
                 <h3>{perfil?.nombre || 'Empresa'}</h3>
                 <p>{perfil?.correo || user?.email}</p>
               </div>
+              <Link to="/empresa/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
             </div>
 
             <div className="perfil-sections">

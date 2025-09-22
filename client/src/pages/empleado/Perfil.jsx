@@ -44,10 +44,7 @@ const EmpleadoPerfil = () => {
 
       <main className="perfil-main">
         <div className="perfil-container">
-          <div className="perfil-header-actions">
-            <h2>Mi Perfil Profesional</h2>
-            <Link to="/empleado/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
-          </div>
+          <h2>Mi Perfil Profesional</h2>
           
           <div className="perfil-card">
             <div className="perfil-header">
@@ -58,6 +55,7 @@ const EmpleadoPerfil = () => {
                 <h3>{perfil?.nombre || 'Usuario'}</h3>
                 <p>{perfil?.correo || user?.email}</p>
               </div>
+              <Link to="/empleado/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
             </div>
 
 
