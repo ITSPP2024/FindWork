@@ -617,7 +617,12 @@ app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) 
     return res.json(datosSimulados.vacantes);
   }
   
-  const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
+  const query = `
+    SELECT p.*, e.Nombre_Empresa, e.Ubicacion 
+    FROM puestos p 
+    JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa 
+    ORDER BY p.idPuestos DESC
+  `;
   
   db.query(query, (err, results) => {
     if (err) {

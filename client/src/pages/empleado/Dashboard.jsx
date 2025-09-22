@@ -36,7 +36,7 @@ const EmpleadoDashboard = () => {
 
   const fetchVacantes = async () => {
     try {
-      const response = await api.get('/api/vacantes');
+      const response = await api.get('/vacantes');
       setVacantes(response.data);
     } catch (error) {
       console.error('Error cargando vacantes:', error);
