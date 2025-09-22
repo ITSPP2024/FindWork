@@ -43,7 +43,10 @@ const EmpresaPerfil = () => {
 
       <main className="perfil-main">
         <div className="perfil-container">
-          <h2>Perfil de Empresa</h2>
+          <div className="perfil-header-actions">
+            <h2>Perfil de Empresa</h2>
+            <Link to="/empresa/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
+          </div>
           
           <div className="perfil-card">
             <div className="perfil-header">
@@ -107,10 +110,6 @@ const EmpresaPerfil = () => {
               </div>
             </div>
 
-            <div className="perfil-actions">
-              <Link to="/empresa/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
-              <button className="btn-secondary">Ver Estadísticas Detalladas</button>
-            </div>
           </div>
         </div>
       </main>

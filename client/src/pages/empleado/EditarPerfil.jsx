@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/EditarPerfil.css';
 import api from '../../services/api';
@@ -180,7 +181,10 @@ const EditarPerfil = () => {
 
   return (
     <div className="editar-perfil">
-      <h2>✏️ Editar Mi Perfil</h2>
+      <div className="editar-perfil-header">
+        <Link to="/empleado/perfil" className="btn-regresar">← Regresar al Perfil</Link>
+        <h2>✏️ Editar Mi Perfil</h2>
+      </div>
 
       {mensaje && (
         <div className={`mensaje ${mensaje.includes('❌') ? 'error' : 'exito'}`}>
