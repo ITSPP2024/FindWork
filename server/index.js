@@ -617,18 +617,7 @@ app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) 
     return res.json(datosSimulados.vacantes);
   }
   
-  const query = `
-    SELECT 
-      p.idPuestos,
-      p.Tipo_Puesto,
-      p.Salario,
-      p.Horario,
-      p.Ubicacion,
-      e.Nombre_Empresa
-    FROM puestos p
-    JOIN empresa e ON p.empresa_id = e.idEmpresa
-    ORDER BY p.idPuestos DESC
-  `;
+  const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
   
   db.query(query, (err, results) => {
     if (err) {
@@ -839,7 +828,7 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_id) VALUES (?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)';
   
   db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, result) => {
     if (err) {
@@ -871,21 +860,9 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.json(vacantesEmpresa);
   }
   
-  const query = `
-    SELECT 
-      p.idPuestos,
-      p.Tipo_Puesto,
-      p.Salario,
-      p.Horario,
-      p.Ubicacion,
-      e.Nombre_Empresa
-    FROM puestos p
-    JOIN empresa e ON p.empresa_id = e.idEmpresa
-    WHERE p.empresa_id = ?
-    ORDER BY p.idPuestos DESC
-  `;
+  const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
   
-  db.query(query, [id], (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
       console.error('Error obteniendo vacantes empresa:', err);
       return res.status(500).json({ error: 'Error interno del servidor' });
