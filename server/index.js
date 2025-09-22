@@ -1144,16 +1144,54 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
   }
 
   if (!isMySQL) {
-    // Datos simulados más realistas
+    // Datos simulados - aplicaciones hechas a vacantes de la empresa
     const aplicacionesSimuladas = [
-      // Datos simulados de aplicaciones
+      {
+        idAplicacion: 1,
+        candidato_nombre: 'Joshua Quiroz Burgos',
+        candidato_email: 'Joshua@gmail.com',
+        candidato_telefono: '6674863190',
+        puesto_titulo: 'Desarrollador Frontend',
+        salario_esperado: 15000,
+        disponibilidad: 'Inmediata',
+        carta_presentacion: 'Estoy interesado en este puesto...',
+        estado: 'pendiente',
+        fecha_aplicacion: new Date().toISOString()
+      }
     ];
     
     return res.json(aplicacionesSimuladas);
   }
 
-  // MySQL query here - placeholder
-  res.json([]);
+  const query = `
+    SELECT 
+      a.idAplicacion,
+      a.salario_esperado,
+      a.disponibilidad,
+      a.carta_presentacion,
+      a.estado,
+      a.fecha_aplicacion,
+      c.Nombre_Candidatos as candidato_nombre,
+      c.Correo_Candidatos as candidato_email,
+      c.Numero_Candidatos as candidato_telefono,
+      p.Tipo_Puesto as puesto_titulo,
+      p.Salario,
+      p.Ubicacion
+    FROM aplicaciones a
+    JOIN candidatos c ON a.candidato_id = c.idCandidatos
+    JOIN puestos p ON a.puesto_id = p.idPuestos
+    WHERE p.empresa_id = ?
+    ORDER BY a.fecha_aplicacion DESC
+  `;
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo aplicaciones empresa:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    res.json(results);
+  });
 });
 
 // Actualizar estado de aplicación (solo empresas)
