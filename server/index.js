@@ -620,7 +620,7 @@ app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) 
   const query = `
     SELECT p.*, e.Nombre_Empresa, e.Ubicacion 
     FROM puestos p 
-    JOIN empresa e ON p.empresa_idEmpresa = e.idEmpresa 
+    JOIN empresa e ON p.empresa_id = e.idEmpresa 
     ORDER BY p.idPuestos DESC
   `;
   
@@ -833,7 +833,7 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
     });
   }
   
-  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_idEmpresa) VALUES (?, ?, ?, ?, ?)';
+  const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_id) VALUES (?, ?, ?, ?, ?)';
   
   db.query(query, [tipo_puesto, salario, horario, ubicacion, empresaId], (err, result) => {
     if (err) {
