@@ -646,14 +646,6 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
 
 // Estadísticas generales
 app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req, res) => {
-  if (!isMySQL) {
-    return res.json({
-      empleados: datosSimulados.empleados.length,
-      empresas: datosSimulados.empresas.length,
-      vacantes: datosSimulados.vacantes.length,
-      expedientes: 2
-    });
-  }
 
   const queries = {
     empleados: 'SELECT COUNT(*) as total FROM candidatos',
@@ -684,13 +676,6 @@ app.get('/api/admin/estadisticas', authenticateToken, requireRole('admin'), (req
 
 // Obtener todos los usuarios
 app.get('/api/admin/usuarios', authenticateToken, requireRole('admin'), (req, res) => {
-  if (!isMySQL) {
-    const allUsers = [
-      ...datosSimulados.empleados,
-      ...datosSimulados.empresas
-    ];
-    return res.json(allUsers);
-  }
 
   const query = `
     SELECT 'empleado' as tipo, idCandidatos as id, Nombre_Candidatos as nombre, Correo_Candidatos as email FROM candidatos
@@ -720,44 +705,6 @@ app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), as
     return res.status(400).json({ error: 'ID del puesto es requerido' });
   }
 
-  if (!isMySQL) {
-    // Simulación para modo sin MySQL
-    const aplicacionId = Math.floor(Math.random() * 1000) + 100;
-    
-    // Enviar notificaciones por email incluso en modo simulado
-    try {
-      console.log(`📧 Enviando notificaciones de nueva aplicación (modo simulado)`);
-      
-      // Simular datos para notificación
-      const vacante = datosSimulados.vacantes.find(v => v.idPuestos == puesto_id);
-      const empresa = datosSimulados.empresas.find(e => e.nombre === vacante?.Nombre_Empresa);
-      
-      if (vacante && empresa) {
-        await emailService.sendNewApplicationEmail(
-          req.user.nombre, 
-          vacante.Tipo_Puesto, 
-          empresa.email
-        );
-        
-        await emailService.sendApplicationConfirmationEmail(
-          req.user.email, 
-          vacante.Tipo_Puesto, 
-          empresa.nombre
-        );
-        
-        console.log('✅ Notificaciones enviadas exitosamente');
-      }
-    } catch (emailError) {
-      console.error('⚠️  Error enviando emails (modo simulado):', emailError.message);
-      // No falla la aplicación por error de email
-    }
-    
-    return res.json({
-      message: 'Aplicación enviada exitosamente',
-      aplicacionId: aplicacionId,
-      estado: 'pendiente'
-    });
-  }
 
   try {
     // Verificar que no haya aplicado antes a este puesto
@@ -848,28 +795,6 @@ app.get('/api/empleado/aplicaciones/:id', authenticateToken, requireRole('emplea
     return res.status(403).json({ error: 'Solo puedes ver tus propias aplicaciones' });
   }
 
-  if (!isMySQL) {
-    // Datos simulados
-    const aplicacionesSimuladas = [
-      {
-        idAplicacion: 1,
-        puesto_titulo: 'Desarrollador Frontend',
-        empresa_nombre: 'Tech Solutions',
-        estado: 'pendiente',
-        fecha_aplicacion: '2024-01-15',
-        salario_esperado: 25000
-      },
-      {
-        idAplicacion: 2,
-        puesto_titulo: 'Diseñador UX/UI',
-        empresa_nombre: 'InnovaCorp',
-        estado: 'revisando',
-        fecha_aplicacion: '2024-01-10',
-        salario_esperado: 22000
-      }
-    ];
-    return res.json(aplicacionesSimuladas);
-  }
 
   const query = `
     SELECT 
@@ -909,25 +834,6 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
     return res.status(403).json({ error: 'Solo puedes ver aplicaciones de tu empresa' });
   }
 
-  if (!isMySQL) {
-    // Datos simulados - aplicaciones hechas a vacantes de la empresa
-    const aplicacionesSimuladas = [
-      {
-        idAplicacion: 1,
-        candidato_nombre: 'Joshua Quiroz Burgos',
-        candidato_email: 'Joshua@gmail.com',
-        candidato_telefono: '6674863190',
-        puesto_titulo: 'Desarrollador Frontend',
-        salario_esperado: 15000,
-        disponibilidad: 'Inmediata',
-        carta_presentacion: 'Estoy interesado en este puesto...',
-        estado: 'pendiente',
-        fecha_aplicacion: new Date().toISOString()
-      }
-    ];
-    
-    return res.json(aplicacionesSimuladas);
-  }
 
   const query = `
     SELECT 
@@ -970,36 +876,6 @@ app.put('/api/empresa/aplicacion/:aplicacionId', authenticateToken, requireRole(
     return res.status(400).json({ error: 'Estado inválido' });
   }
 
-  if (!isMySQL) {
-    // Simular persistencia actualizando los datos en memoria
-    let aplicacionesSimuladas = [
-      ];
-
-    // Verificar que la aplicación existe y pertenece a la empresa (simulado)
-    const aplicacion = aplicacionesSimuladas.find(app => 
-      app.idAplicacion === parseInt(aplicacionId)
-    );
-
-    if (!aplicacion) {
-      return res.status(404).json({ error: 'Aplicación no encontrada' });
-    }
-
-    // Verificar propiedad en modo simulado (empresa ID = 1 por defecto)
-    if (req.user.id !== 1) {
-      return res.status(403).json({ error: 'No tienes permiso para modificar esta aplicación' });
-    }
-
-    // Actualizar estado y notas en los datos simulados
-    aplicacion.estado = estado;
-    if (notas_empresa !== undefined) {
-      aplicacion.notas_empresa = notas_empresa;
-    }
-
-    return res.json({ 
-      message: 'Estado actualizado exitosamente (simulado)',
-      aplicacion: aplicacion
-    });
-  }
 
   // Verificar que la aplicación pertenece a una vacante de esta empresa
   const verifyQuery = `
@@ -1049,32 +925,6 @@ app.get('/api/empleado/favoritos/:id', authenticateToken, requireRole('empleado'
     return res.status(403).json({ error: 'Solo puedes ver tus propios favoritos' });
   }
 
-  if (!isMySQL) {
-    // Datos simulados - vacantes favoritas
-    const favoritosSimulados = [
-      {
-        idFavorito: 1,
-        puesto_id: 1,
-        fecha_agregado: '2024-01-15T10:00:00.000Z',
-        Tipo_Puesto: 'Desarrollador Frontend',
-        Nombre_Empresa: 'Tech Solutions',
-        Ubicacion: 'Ciudad de México',
-        Salario: '45000',
-        Horario: 'Tiempo completo'
-      },
-      {
-        idFavorito: 2,
-        puesto_id: 3,
-        fecha_agregado: '2024-01-16T14:30:00.000Z',
-        Tipo_Puesto: 'Diseñador UX/UI',
-        Nombre_Empresa: 'Creative Studio',
-        Ubicacion: 'Guadalajara',
-        Salario: '38000',
-        Horario: 'Tiempo completo'
-      }
-    ];
-    return res.json(favoritosSimulados);
-  }
 
   const query = `
     SELECT 
@@ -1112,11 +962,6 @@ app.get('/api/empleado/favorito/:empleadoId/:vacanteId', authenticateToken, requ
     return res.status(403).json({ error: 'Solo puedes verificar tus propios favoritos' });
   }
 
-  if (!isMySQL) {
-    // En simulación, solo las vacantes 1 y 3 son favoritas
-    const isFavorite = [1, 3].includes(parseInt(vacanteId));
-    return res.json({ isFavorite });
-  }
 
   const query = 'SELECT idFavorito FROM favoritos WHERE candidato_id = ? AND puesto_id = ?';
   
@@ -1139,16 +984,6 @@ app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('emplea
     return res.status(400).json({ error: 'ID del puesto es requerido' });
   }
 
-  if (!isMySQL) {
-    // Simulación para modo sin MySQL
-    const isCurrentlyFavorite = [1, 3].includes(parseInt(puesto_id));
-    
-    return res.json({
-      message: isCurrentlyFavorite ? 'Favorito eliminado exitosamente' : 'Favorito agregado exitosamente',
-      action: isCurrentlyFavorite ? 'removed' : 'added',
-      isFavorite: !isCurrentlyFavorite
-    });
-  }
 
   // Verificar si ya es favorito
   const checkQuery = 'SELECT idFavorito FROM favoritos WHERE candidato_id = ? AND puesto_id = ?';
@@ -1220,17 +1055,6 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 
     // Usar la variable global de conectividad
 
-    if (!isMySQL) {
-      // En datos simulados, agregar el archivo a la lista del usuario
-      if (!datosSimulados.archivos) {
-        datosSimulados.archivos = [];
-      }
-      datosSimulados.archivos.push(fileInfo);
-    } else {
-      // TODO: Implementar inserción en MySQL para tabla archivos
-      // INSERT INTO archivos (nombre_original, nombre_archivo, tipo_archivo, tamano, ruta_archivo, usuario_id, usuario_tipo, tipo_documento)
-      // VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    }
 
     res.json({
       message: 'Archivo subido exitosamente',
@@ -1251,14 +1075,6 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
   }
 
-  if (!isMySQL) {
-    const archivosUsuario = (datosSimulados.archivos || []).filter(archivo => 
-      archivo.userId == userId && archivo.userId == req.user.id
-    );
-    return res.json(archivosUsuario);
-  }
-
-  // TODO: Implementar consulta MySQL para archivos con verificación de ownership
   res.json([]);
 });
 
@@ -1266,35 +1082,6 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
 app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  if (!isMySQL) {
-    const archivo = (datosSimulados.archivos || []).find(archivo => 
-      archivo.id === fileId && archivo.userId == req.user.id
-    );
-    
-    if (!archivo) {
-      return res.status(404).json({ error: 'Archivo no encontrado o acceso denegado' });
-    }
-
-    try {
-      const filePath = path.join(__dirname, 'uploads', archivo.fileType, archivo.filename);
-      
-      if (!fs.existsSync(filePath)) {
-        return res.status(404).json({ error: 'Archivo físico no encontrado' });
-      }
-
-      res.setHeader('Content-Disposition', `attachment; filename="${archivo.originalName}"`);
-      res.setHeader('Content-Type', archivo.mimetype);
-      
-      res.sendFile(filePath);
-    } catch (error) {
-      console.error('Error descargando archivo:', error);
-      res.status(500).json({ error: 'Error descargando archivo' });
-    }
-
-    return;
-  }
-
-  // TODO: Implementar descarga MySQL con verificación de ownership
   res.status(500).json({ error: 'Funcionalidad no disponible aún' });
 });
 
@@ -1302,34 +1089,6 @@ app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
 app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  if (!isMySQL) {
-    const index = (datosSimulados.archivos || []).findIndex(archivo => 
-      archivo.id === fileId && archivo.userId == req.user.id
-    );
-    
-    if (index === -1) {
-      return res.status(404).json({ error: 'Archivo no encontrado o acceso denegado' });
-    }
-
-    const archivo = datosSimulados.archivos[index];
-    
-    // Eliminar archivo físico
-    try {
-      const filePath = path.join(__dirname, 'uploads', archivo.fileType, archivo.filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    } catch (error) {
-      console.error('Error eliminando archivo físico:', error);
-    }
-
-    // Eliminar de datos simulados
-    datosSimulados.archivos.splice(index, 1);
-    
-    return res.json({ message: 'Archivo eliminado exitosamente' });
-  }
-
-  // TODO: Implementar eliminación MySQL con verificación de ownership
   res.status(500).json({ error: 'Funcionalidad no disponible aún' });
 });
 
