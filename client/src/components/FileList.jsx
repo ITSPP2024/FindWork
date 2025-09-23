@@ -21,20 +21,24 @@ const FileList = ({ fileType, title = 'Mis archivos', allowDelete = true, refres
         : response.data;
       setFiles(userFiles);
     } catch (error) {
-      // Error handled silently
+      console.error('Error cargando archivos:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (fileId, filename) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar este archivo?')) {
+      return;
+    }
 
     setDeleting(fileId);
     try {
       await api.delete(`/files/${fileId}`);
       setFiles(files.filter(file => file.id !== fileId));
     } catch (error) {
-      // Error handled silently
+      console.error('Error eliminando archivo:', error);
+      alert('Error eliminando archivo: ' + (error.response?.data?.error || 'Error desconocido'));
     } finally {
       setDeleting(null);
     }
@@ -86,7 +90,8 @@ const FileList = ({ fileType, title = 'Mis archivos', allowDelete = true, refres
       window.URL.revokeObjectURL(url);
       document.body.removeChild(link);
     } catch (error) {
-      // Error handled silently
+      console.error('Error descargando archivo:', error);
+      alert('Error descargando archivo: ' + (error.response?.data?.error || 'Error desconocido'));
     }
   };
 

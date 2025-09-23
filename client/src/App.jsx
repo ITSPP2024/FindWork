@@ -6,11 +6,9 @@ import Login from './pages/Login';
 import EmpleadoDashboard from './pages/empleado/Dashboard';
 import EmpleadoPerfil from './pages/empleado/Perfil';
 import EmpleadoEditarPerfil from './pages/empleado/EditarPerfil';
-import EmpleadoBuscarEmpresas from './pages/empleado/BuscarEmpresas';
 import EmpresaDashboard from './pages/empresa/Dashboard';
 import EmpresaPerfil from './pages/empresa/Perfil';
 import EmpresaEditarPerfil from './pages/empresa/EditarPerfil';
-import EmpresaBuscarCandidatos from './pages/empresa/BuscarCandidatos';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsuarios from './pages/admin/Usuarios';
 import PrivateRoute from './components/PrivateRoute';
@@ -51,14 +49,6 @@ function App() {
                 </PrivateRoute>
               } 
             />
-            <Route 
-              path="/empleado/buscar-empresas" 
-              element={
-                <PrivateRoute userType="empleado">
-                  <EmpleadoBuscarEmpresas />
-                </PrivateRoute>
-              } 
-            />
             
             {/* Rutas de Empresa */}
             <Route 
@@ -82,14 +72,6 @@ function App() {
               element={
                 <PrivateRoute userType="empresa">
                   <EmpresaEditarPerfil />
-                </PrivateRoute>
-              } 
-            />
-            <Route 
-              path="/empresa/buscar-candidatos" 
-              element={
-                <PrivateRoute userType="empresa">
-                  <EmpresaBuscarCandidatos />
                 </PrivateRoute>
               } 
             />

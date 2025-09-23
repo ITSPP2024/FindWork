@@ -39,7 +39,7 @@ const EmpleadoDashboard = () => {
       const response = await api.get('/vacantes');
       setVacantes(response.data);
     } catch (error) {
-      // Error handled silently
+      console.error('Error cargando vacantes:', error);
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ const EmpleadoDashboard = () => {
         setAplicaciones(result.data);
       }
     } catch (error) {
-      // Error handled silently
+      console.error('Error cargando aplicaciones:', error);
     }
   };
 
@@ -74,7 +74,7 @@ const EmpleadoDashboard = () => {
         setFavoritesMap(map);
       }
     } catch (error) {
-      // Error handled silently
+      console.error('Error cargando favoritos:', error);
     }
   };
 
@@ -97,9 +97,10 @@ const EmpleadoDashboard = () => {
         
         // Mostrar mensaje de confirmación
         const message = action === 'added' ? 'Agregado a favoritos ❤️' : 'Eliminado de favoritos 💔';
+        console.log(message);
       }
     } catch (error) {
-      // Error handled silently
+      console.error('Error actualizando favorito:', error);
     }
   };
 
@@ -115,9 +116,11 @@ const EmpleadoDashboard = () => {
     const result = await applicationsAPI.applyToJob(applicationData);
     
     if (result.success) {
+      alert('¡Aplicación enviada exitosamente!');
       fetchMisAplicaciones();
       return result;
     } else {
+      alert(`Error: ${result.error}`);
       return result;
     }
   };
@@ -235,7 +238,6 @@ const EmpleadoDashboard = () => {
               Favoritos ({favoritos.length})
             </button>
             <Link to="/empleado/perfil" className="nav-link">Mi Perfil</Link>
-            <Link to="/empleado/buscar-empresas" className="nav-link">🏢 Buscar Empresas</Link>
             <span className="user-info">Hola, {user?.nombre}</span>
             <button onClick={logout} className="logout-btn">Cerrar Sesión</button>
           </div>

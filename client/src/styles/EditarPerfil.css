@@ -130,23 +130,6 @@
   margin-top: 8px;
 }
 
-/* Contador de caracteres */
-.contador-caracteres {
-  font-size: 12px;
-  color: #6c757d;
-  text-align: right;
-  margin-top: 5px;
-  padding-right: 5px;
-}
-
-.contador-caracteres.warning {
-  color: #fd7e14;
-}
-
-.contador-caracteres.danger {
-  color: #dc3545;
-}
-
 /* Sección de Información */
 .seccion-informacion {
   background: #f8f9fa;

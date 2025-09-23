@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/EditarPerfil.css';
 import api from '../../services/api';
 
 const EditarPerfilEmpresa = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [perfil, setPerfil] = useState({
     nombre: '',
     descripcion: '',
@@ -17,6 +16,7 @@ const EditarPerfilEmpresa = () => {
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
+  const [mensaje, setMensaje] = useState('');
   const [previewFoto, setPreviewFoto] = useState(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
@@ -43,6 +43,8 @@ const EditarPerfilEmpresa = () => {
         setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
       }
     } catch (error) {
+      console.error('Error cargando perfil:', error);
+      setMensaje('Error cargando el perfil');
     } finally {
       setLoading(false);
     }
@@ -53,22 +55,12 @@ const EditarPerfilEmpresa = () => {
       const response = await api.get(`/files/${user.id}`);
       setArchivos(response.data);
     } catch (error) {
+      console.error('Error cargando archivos:', error);
     }
   };
 
   const manejarCambio = (e) => {
     const { name, value } = e.target;
-    
-    // Límite de caracteres para descripción
-    const limits = {
-      descripcion: 800
-    };
-    
-    // Verificar límite si el campo tiene uno definido
-    if (limits[name] && value.length > limits[name]) {
-      return; // No actualizar si excede el límite
-    }
-    
     setPerfil(prev => ({
       ...prev,
       [name]: value
@@ -78,7 +70,7 @@ const EditarPerfilEmpresa = () => {
   const guardarPerfil = async (e) => {
     e.preventDefault();
     setGuardando(true);
-
+    setMensaje('');
 
     try {
       const response = await api.put(`/empresa/perfil/${user.id}`, {
@@ -88,15 +80,15 @@ const EditarPerfilEmpresa = () => {
         ubicacion: perfil.ubicacion
       });
 
-      
+      setMensaje('✅ Perfil actualizado exitosamente');
+      setTimeout(() => setMensaje(''), 3000);
       
       // Recargar el perfil para mostrar los datos actualizados
       await cargarPerfil();
-      
-      // Redirigir a la página de perfil después de guardar exitosamente
-      navigate('/empresa/perfil');
     } catch (error) {
+      console.error('Error guardando perfil:', error);
       const errorMessage = error.response?.data?.error || 'Error al guardar el perfil';
+      setMensaje(`❌ Error: ${errorMessage}`);
     } finally {
       setGuardando(false);
     }
@@ -108,16 +100,18 @@ const EditarPerfilEmpresa = () => {
 
     // Verificar que sea una imagen
     if (!archivo.type.startsWith('image/')) {
+      setMensaje('❌ Por favor selecciona una imagen válida');
       return;
     }
 
     // Verificar tamaño (máximo 5MB)
     if (archivo.size > 5 * 1024 * 1024) {
+      setMensaje('❌ La imagen no puede ser mayor a 5MB');
       return;
     }
 
     setSubiendoFoto(true);
-
+    setMensaje('');
 
     const formData = new FormData();
     formData.append('foto', archivo);
@@ -128,10 +122,12 @@ const EditarPerfilEmpresa = () => {
       const data = response.data;
       setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
       setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
-      
+      setMensaje('✅ Foto de perfil actualizada exitosamente');
+      setTimeout(() => setMensaje(''), 3000);
     } catch (error) {
+      console.error('Error subiendo foto:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir la foto';
-
+      setMensaje(`❌ ${errorMessage}`);
     } finally {
       setSubiendoFoto(false);
     }
@@ -143,6 +139,7 @@ const EditarPerfilEmpresa = () => {
 
     // Verificar que sea un PDF
     if (archivo.type !== 'application/pdf') {
+      setMensaje('❌ Solo se permiten archivos PDF');
       return;
     }
 
@@ -152,24 +149,29 @@ const EditarPerfilEmpresa = () => {
 
     try {
       await api.post('/upload', formData);
+      setMensaje('✅ Documento subido exitosamente');
       cargarArchivos(); // Recargar lista de archivos
-      
+      setTimeout(() => setMensaje(''), 3000);
       e.target.value = ''; // Limpiar input
     } catch (error) {
+      console.error('Error subiendo documento:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir el documento';
-
+      setMensaje(`❌ ${errorMessage}`);
     }
   };
 
   const eliminarArchivo = async (archivoId) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este archivo?')) return;
 
     try {
       await api.delete(`/files/${archivoId}`);
+      setMensaje('✅ Archivo eliminado exitosamente');
       cargarArchivos(); // Recargar lista de archivos
-      
+      setTimeout(() => setMensaje(''), 3000);
     } catch (error) {
+      console.error('Error eliminando archivo:', error);
       const errorMessage = error.response?.data?.error || 'Error al eliminar el archivo';
-
+      setMensaje(`❌ ${errorMessage}`);
     }
   };
 
@@ -184,6 +186,11 @@ const EditarPerfilEmpresa = () => {
         <h2>🏢 Editar Perfil de Empresa</h2>
       </div>
 
+      {mensaje && (
+        <div className={`mensaje ${mensaje.includes('❌') ? 'error' : 'exito'}`}>
+          {mensaje}
+        </div>
+      )}
 
       <div className="perfil-container">
         {/* Sección de Logo de Empresa */}
@@ -268,12 +275,6 @@ const EditarPerfilEmpresa = () => {
                 rows="6"
                 placeholder="Describe tu empresa: misión, visión, valores, industria, tamaño, historia, cultura laboral..."
               />
-              <div className={`contador-caracteres ${
-                perfil.descripcion.length > 750 ? 'danger' : 
-                perfil.descripcion.length > 650 ? 'warning' : ''
-              }`}>
-                {perfil.descripcion.length}/800 caracteres
-              </div>
             </div>
 
             <button type="submit" disabled={guardando} className="btn-guardar">

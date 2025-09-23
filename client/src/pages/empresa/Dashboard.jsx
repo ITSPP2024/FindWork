@@ -47,7 +47,7 @@ const EmpresaDashboard = () => {
       const response = await api.get(`/empresa/vacantes/${user.id}`);
       setVacantes(response.data);
     } catch (error) {
-      // Error handled silently
+      console.error('Error cargando vacantes:', error);
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ const EmpresaDashboard = () => {
       const response = await api.get(`/empresa/aplicaciones/${user.id}`);
       setAplicaciones(response.data);
     } catch (error) {
-      // Error handled silently
+      console.error('Error cargando aplicaciones:', error);
     } finally {
       setLoading(false);
     }
@@ -77,9 +77,11 @@ const EmpresaDashboard = () => {
       });
       setShowCreateForm(false);
       fetchVacantes();
+      alert('✅ Vacante creada exitosamente');
     } catch (error) {
       console.error('Error creando vacante:', error);
       const errorMessage = error.response?.data?.error || 'Error al crear la vacante';
+      alert(`❌ Error: ${errorMessage}`);
     }
   };
 
@@ -99,10 +101,13 @@ const EmpresaDashboard = () => {
         });
       }
       
-      fetchAplicaciones();
+      fetchAplicaciones(); // Refresh applications
+      
+      // Mostrar feedback de éxito
+      alert('Estado actualizado exitosamente');
     } catch (error) {
       console.error('Error actualizando aplicación:', error);
-      // Error handled silently
+      alert('Error actualizando estado: ' + (error.response?.data?.error || 'Error desconocido'));
     }
   };
 
@@ -155,7 +160,6 @@ const EmpresaDashboard = () => {
           <h1>FindWork</h1>
           <div className="nav-links">
             <Link to="/empresa/perfil" className="nav-link">Mi Perfil</Link>
-            <Link to="/empresa/buscar-candidatos" className="nav-link">🔍 Buscar Candidatos</Link>
             <span className="user-info">Hola, {user?.nombre}</span>
             <button onClick={logout} className="logout-btn">Cerrar Sesión</button>
           </div>
