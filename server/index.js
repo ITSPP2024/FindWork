@@ -159,67 +159,6 @@ const requireRole = (role) => {
   };
 };
 
-// Datos simulados (se reemplazarán con MySQL cuando esté conectado)
-let isMySQL = false;
-
-// Verificar si MySQL está conectado
-setTimeout(() => {
-  db.ping((err) => {
-    if (!err) {
-      isMySQL = true;
-      console.log('🔗 MySQL está disponible');
-    } else {
-      isMySQL = false;
-      console.log('⚠️ MySQL no disponible, usando datos simulados');
-    }
-  });
-}, 1000);
-
-const datosSimulados = {
-  empleados: [
-    {
-      id: 1,
-      nombre: 'Joshua Quiroz Burgos',
-      email: 'Joshua@gmail.com',
-      telefono: '6674863190',
-      descripcion: 'Desarrollador full-stack con experiencia en React y Node.js',
-      experiencia: '2 años de experiencia en desarrollo web',
-      foto_perfil: null
-    },
-    {
-      id: 2,
-      nombre: 'María González',
-      email: 'maria@email.com',
-      telefono: '555-0234',
-      descripcion: 'Diseñadora UX/UI especializada en aplicaciones móviles',
-      experiencia: '3 años en diseño de interfaces',
-      foto_perfil: null
-    }
-  ],
-  empresas: [
-    {
-      id: 1,
-      nombre: 'TechCorp SA',
-      email: 'info@techcorp.com',
-      telefono: '555-0100',
-      ubicacion: 'Ciudad de México',
-      descripcion: 'Empresa líder en desarrollo de software',
-      foto_perfil: null
-    }
-  ],
-  vacantes: [
-    {
-      idPuestos: 1,
-      Nombre_Puesto: 'Desarrollador Frontend',
-      Descripcion_Puesto: 'Buscamos desarrollador con experiencia en React',
-      Nivel_Requerido: 'Junior',
-      Experiencia_Requerida: '1-2 años',
-      Tipo_Puesto: 'Tiempo completo',
-      Nombre_Empresa: 'TechCorp SA',
-      Ubicacion: 'Ciudad de México'
-    }
-  ]
-};
 
 // Servir archivos estáticos de forma segura (después de definir authenticateToken)
 app.use('/uploads', authenticateToken, (req, res, next) => {
@@ -247,59 +186,6 @@ app.post('/api/login', async (req, res) => {
     return res.status(400).json({ error: 'Tipo de usuario inválido' });
   }
 
-  // Si MySQL no está disponible, usar datos simulados
-  if (!isMySQL) {
-    let user = null;
-    
-    // Verificar si es admin
-    if (email === 'admin' && password === 'admin' && tipoUsuario === 'admin') {
-      user = { id: 1, nombre: 'Administrador', email: 'admin', tipo: 'admin' };
-    } else {
-      
-      // Buscar según el tipo de usuario seleccionado
-      if (tipoUsuario === 'empleado') {
-        user = datosSimulados.empleados.find(emp => emp.email === email);
-        if (user) {
-          user.tipo = 'empleado';
-        }
-      } else if (tipoUsuario === 'empresa') {
-        user = datosSimulados.empresas.find(emp => emp.email === email);
-        if (user) {
-          user.tipo = 'empresa';
-        }
-      }
-      
-      // Verificar contraseña para usuarios normales
-      if (user && password !== 'demo' && password !== 'test') {
-        return res.status(401).json({ error: 'Contraseña incorrecta. Usa "demo" o "test"' });
-      }
-    }
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-    
-    const token = jwt.sign(
-      { 
-        id: user.id, 
-        email: user.email, 
-        tipo: user.tipo,
-        nombre: user.nombre 
-      },
-      JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    return res.json({
-      token,
-      user: {
-        id: user.id,
-        nombre: user.nombre,
-        email: user.email,
-        tipo: user.tipo
-      }
-    });
-  }
 
   // Función para buscar usuario en MySQL
   const searchUser = async () => {
@@ -401,20 +287,6 @@ app.get('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     return res.status(403).json({ error: 'Solo puedes ver tu propio perfil' });
   }
   
-  if (!isMySQL) {
-    const empleado = datosSimulados.empleados.find(emp => emp.id == id);
-    if (!empleado) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
-    }
-    return res.json({
-      nombre: empleado.nombre || 'Usuario',
-      correo: empleado.email || 'sin-email@ejemplo.com',
-      telefono: empleado.telefono || '555-0123',
-      experiencia: empleado.experiencia || 'Sin experiencia registrada',
-      descripcion: empleado.descripcion || 'Sin descripción personal',
-      foto_perfil: empleado.foto_perfil || null
-    });
-  }
   
   const query = `
     SELECT 
@@ -455,26 +327,6 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
   }
 
-  if (!isMySQL) {
-    const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
-    if (empleadoIndex === -1) {
-      return res.status(404).json({ error: 'Perfil no encontrado' });
-    }
-    
-    // Actualizar datos simulados
-    datosSimulados.empleados[empleadoIndex] = {
-      ...datosSimulados.empleados[empleadoIndex],
-      nombre: nombre || datosSimulados.empleados[empleadoIndex].nombre,
-      descripcion: descripcion,
-      telefono: telefono,
-      experiencia: experiencia
-    };
-    
-    return res.json({ 
-      message: 'Perfil actualizado exitosamente',
-      empleado: datosSimulados.empleados[empleadoIndex]
-    });
-  }
 
   // Usar transacción para atomicidad
   db.beginTransaction((transactionErr) => {
@@ -578,19 +430,6 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
 
     // Usar la variable global de conectividad
 
-    if (!isMySQL) {
-      const empleadoIndex = datosSimulados.empleados.findIndex(emp => emp.id == id);
-      if (empleadoIndex === -1) {
-        return res.status(404).json({ error: 'Perfil no encontrado' });
-      }
-      
-      datosSimulados.empleados[empleadoIndex].foto_perfil = fotoPath;
-      
-      return res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
-      });
-    }
 
     const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
     
@@ -613,9 +452,6 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {
-  if (!isMySQL) {
-    return res.json(datosSimulados.vacantes);
-  }
   
   const query = `
     SELECT p.*, e.Nombre_Empresa, e.Ubicacion 
@@ -645,20 +481,6 @@ app.get('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     return res.status(403).json({ error: 'Solo puedes ver tu propio perfil' });
   }
   
-  if (!isMySQL) {
-    const empresa = datosSimulados.empresas.find(emp => emp.id == id);
-    if (!empresa) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-    return res.json({
-      nombre: empresa.nombre || 'Empresa',
-      correo: empresa.email || 'sin-email@ejemplo.com',
-      telefono: empresa.telefono || '555-0100',
-      ubicacion: empresa.ubicacion || 'Ciudad de México',
-      descripcion: empresa.descripcion || 'Empresa líder en tecnología',
-      foto_perfil: empresa.foto_perfil || null
-    });
-  }
   
   const query = `
     SELECT 
@@ -695,26 +517,6 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
     return res.status(403).json({ error: 'Solo puedes actualizar tu propio perfil' });
   }
 
-  if (!isMySQL) {
-    const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
-    if (empresaIndex === -1) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-    
-    // Actualizar datos simulados
-    datosSimulados.empresas[empresaIndex] = {
-      ...datosSimulados.empresas[empresaIndex],
-      nombre: nombre || datosSimulados.empresas[empresaIndex].nombre,
-      descripcion: descripcion,
-      telefono: telefono,
-      ubicacion: ubicacion
-    };
-    
-    return res.json({ 
-      message: 'Perfil actualizado exitosamente',
-      empresa: datosSimulados.empresas[empresaIndex]
-    });
-  }
 
   const updateQuery = `
     UPDATE empresa 
@@ -779,19 +581,6 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
 
     // Usar la variable global de conectividad
 
-    if (!isMySQL) {
-      const empresaIndex = datosSimulados.empresas.findIndex(emp => emp.id == id);
-      if (empresaIndex === -1) {
-        return res.status(404).json({ error: 'Empresa no encontrada' });
-      }
-      
-      datosSimulados.empresas[empresaIndex].foto_perfil = fotoPath;
-      
-      return res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
-      });
-    }
 
     const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
     
@@ -817,21 +606,6 @@ app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req
   const { tipo_puesto, salario, horario, ubicacion } = req.body;
   const empresaId = req.user.id;
   
-  if (!isMySQL) {
-    const nuevaVacante = {
-      idPuestos: datosSimulados.vacantes.length + 1,
-      Tipo_Puesto: tipo_puesto,
-      Salario: salario,
-      Horario: horario,
-      Ubicacion: ubicacion,
-      Nombre_Empresa: req.user.nombre
-    };
-    datosSimulados.vacantes.push(nuevaVacante);
-    return res.json({ 
-      message: 'Vacante creada exitosamente',
-      id: nuevaVacante.idPuestos 
-    });
-  }
   
   const query = 'INSERT INTO puestos (Tipo_Puesto, Salario, Horario, Ubicacion, empresa_id) VALUES (?, ?, ?, ?, ?)';
   
@@ -856,14 +630,6 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
     return res.status(403).json({ error: 'Solo puedes ver tus propias vacantes' });
   }
   
-  if (!isMySQL) {
-    const empresa = datosSimulados.empresas.find(emp => emp.id == id);
-    if (!empresa) {
-      return res.json([]);
-    }
-    const vacantesEmpresa = datosSimulados.vacantes.filter(v => v.Nombre_Empresa === empresa.nombre);
-    return res.json(vacantesEmpresa);
-  }
   
   const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
   
