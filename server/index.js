@@ -37,8 +37,44 @@ const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
   password: 'admin',
-  database: 'powerman'
+  database: 'powerman',
+  // Habilitar logs de SQL para debugging
+  debug: false,
+  multipleStatements: true
 });
+
+// Interceptar todas las queries para logging
+const originalQuery = db.query;
+db.query = function(sql, params, callback) {
+  // Si solo se pasan 2 argumentos, el segundo es el callback
+  if (typeof params === 'function') {
+    callback = params;
+    params = null;
+  }
+  
+  console.log('💾 [SQL QUERY]:', typeof sql === 'string' ? sql.trim() : sql);
+  if (params) {
+    console.log('📋 [SQL PARAMS]:', params);
+  }
+  
+  return originalQuery.call(this, sql, params, function(err, results, fields) {
+    if (err) {
+      console.error('❌ [SQL ERROR] ==========================================');
+      console.error('❌ [SQL ERROR] Query que falló:', typeof sql === 'string' ? sql.trim() : sql);
+      console.error('❌ [SQL ERROR] Parámetros:', params);
+      console.error('❌ [SQL ERROR] Código de error:', err.code);
+      console.error('❌ [SQL ERROR] Mensaje:', err.sqlMessage || err.message);
+      console.error('❌ [SQL ERROR] Error completo:', err);
+      console.error('❌ [SQL ERROR] ==========================================');
+    } else {
+      console.log('✅ [SQL SUCCESS] Query ejecutada exitosamente');
+    }
+    
+    if (callback) {
+      callback(err, results, fields);
+    }
+  });
+};
 
 // Conectar a la base de datos
 db.connect((err) => {
