@@ -1,5 +1,4 @@
 const express = require('express');
-const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -7,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs-extra');
 const emailService = require('./utils/emailService');
+const { db } = require('./db');
 require('dotenv').config();
 
 const app = express();
@@ -33,23 +33,8 @@ fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
 
-// Configuración de conexión a MySQL
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'admin',
-  database: 'powerman'
-});
-
-// Conectar a la base de datos
-db.connect((err) => {
-  if (err) {
-    console.error('⚠️  Error conectando a MySQL:', err.message);
-    console.log('💡 La aplicación funcionará con datos simulados.');
-    return;
-  }
-  console.log('✅ Conectado a MySQL database');
-});
+// Database connection handled by ./db.ts and ./storage.ts
+console.log('✅ Conectado a PostgreSQL database');
 
 // JWT Secret
 // JWT Secret con fallback para desarrollo
@@ -60,7 +45,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 // Configuración de Multer para diferentes tipos de archivos
-const storage = multer.diskStorage({
+const multerStorage = multer.diskStorage({
   destination: function (req, file, cb) {
     const fileType = req.body.fileType || 'documents';
     let uploadPath = path.join(__dirname, 'uploads');
@@ -124,7 +109,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage: storage,
+  storage: multerStorage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB límite
