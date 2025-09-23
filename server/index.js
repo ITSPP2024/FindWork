@@ -387,10 +387,14 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 
 // Actualizar foto de perfil del empleado
 app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  console.log('🔍 [FOTO EMPLEADO] Iniciando subida de foto para empleado ID:', req.params.id);
+  console.log('🔍 [FOTO EMPLEADO] Usuario autenticado:', req.user);
+  
   const { id } = req.params;
   
   // Verificar que el usuario solo puede actualizar su propia foto
   if (req.user.id !== parseInt(id)) {
+    console.log('❌ [FOTO EMPLEADO] Error de permisos. Usuario:', req.user.id, 'intentando actualizar ID:', id);
     return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
   }
 
@@ -398,49 +402,71 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
   const profileUpload = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '..', 'Fotos'));
+        const destPath = path.join(__dirname, '..', 'Fotos');
+        console.log('📁 [FOTO EMPLEADO] Destino de archivo:', destPath);
+        cb(null, destPath);
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
-        cb(null, `${req.user.id}_profile_${uniqueSuffix}${ext}`);
+        const filename = `${req.user.id}_profile_${uniqueSuffix}${ext}`;
+        console.log('📝 [FOTO EMPLEADO] Nombre del archivo generado:', filename);
+        cb(null, filename);
       }
     }),
     fileFilter: (req, file, cb) => {
+      console.log('🔍 [FOTO EMPLEADO] Verificando tipo de archivo:', file.mimetype);
       if (file.mimetype.startsWith('image/')) {
+        console.log('✅ [FOTO EMPLEADO] Tipo de archivo válido');
         cb(null, true);
       } else {
+        console.log('❌ [FOTO EMPLEADO] Tipo de archivo inválido:', file.mimetype);
         cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
       }
     },
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB
   }).single('foto');
 
+  console.log('📤 [FOTO EMPLEADO] Procesando upload con multer...');
   profileUpload(req, res, function (err) {
     if (err) {
+      console.error('❌ [FOTO EMPLEADO] Error en multer:', err.message);
       return res.status(400).json({ error: err.message });
     }
 
+    console.log('🔍 [FOTO EMPLEADO] Archivo recibido:', req.file ? req.file.filename : 'NINGUNO');
     if (!req.file) {
+      console.error('❌ [FOTO EMPLEADO] NO SE RECIBIÓ ARCHIVO - req.file es undefined/null');
+      console.log('📋 [FOTO EMPLEADO] Headers recibidos:', req.headers);
+      console.log('📋 [FOTO EMPLEADO] Body recibido:', req.body);
       return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
 
     const fotoPath = `/Fotos/${req.file.filename}`;
+    console.log('💾 [FOTO EMPLEADO] Ruta para guardar en DB:', fotoPath);
 
-    // Usar la variable global de conectividad
-
-
+    // Verificar si estamos conectados a la base de datos
+    console.log('🔗 [FOTO EMPLEADO] Intentando guardar en base de datos...');
     const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
+    console.log('📝 [FOTO EMPLEADO] Query SQL:', updateQuery);
+    console.log('📋 [FOTO EMPLEADO] Parámetros:', [fotoPath, id]);
     
     db.query(updateQuery, [fotoPath, id], (err, result) => {
       if (err) {
-        console.error('Error actualizando foto de perfil:', err);
-        return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+        console.error('❌ [FOTO EMPLEADO] Error en base de datos:', err);
+        console.error('❌ [FOTO EMPLEADO] Error completo:', JSON.stringify(err, null, 2));
+        return res.status(500).json({ error: 'Error actualizando foto de perfil: ' + err.message });
       }
+      
+      console.log('📊 [FOTO EMPLEADO] Resultado de la query:', result);
+      console.log('📊 [FOTO EMPLEADO] Filas afectadas:', result.affectedRows);
+      
       if (result.affectedRows === 0) {
+        console.error('❌ [FOTO EMPLEADO] No se encontró el candidato con ID:', id);
         return res.status(404).json({ error: 'Perfil no encontrado' });
       }
       
+      console.log('✅ [FOTO EMPLEADO] Foto actualizada exitosamente!');
       res.json({ 
         message: 'Foto de perfil actualizada exitosamente',
         foto_perfil: fotoPath
