@@ -6,7 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs-extra');
 const emailService = require('./utils/emailService');
-const { db } = require('./db');
+const { db } = require('./db-adapter');
 require('dotenv').config();
 
 const app = express();
