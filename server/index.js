@@ -1066,7 +1066,41 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
   }
 });
 
-// Obtener archivos del usuario
+// Subir CV (solo para empleados)
+app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.single('cv'), (req, res) => {
+  const { id } = req.params;
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se ha subido ningún CV' });
+  }
+
+  const cvPath = `/uploads/cvs/${req.file.filename}`;
+
+  // Actualizar la ruta del CV en la base de datos
+  const updateQuery = `UPDATE candidatos SET cv_path = ? WHERE idCandidatos = ?`;
+  
+  db.query(updateQuery, [cvPath, req.user.id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando ruta del CV:', err);
+      return res.status(500).json({ error: 'Error guardando CV' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Candidato no encontrado' });
+    }
+    
+    res.json({ 
+      message: 'CV subido exitosamente',
+      cv_path: cvPath,
+      file: {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        size: req.file.size
+      }
+    });
+  });
+});
+
+// Obtener archivos del usuario (simple)
 app.get('/api/files/:userId', authenticateToken, (req, res) => {
   const { userId } = req.params;
   
@@ -1075,21 +1109,100 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
   }
 
-  res.json([]);
+  // Obtener información básica del candidato incluyendo archivos
+  const query = `
+    SELECT foto_perfil, cv_path 
+    FROM candidatos 
+    WHERE idCandidatos = ?
+  `;
+  
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo archivos:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0) {
+      return res.json({ foto_perfil: null, cv_path: null });
+    }
+    
+    res.json(results[0]);
+  });
 });
 
-// Descargar archivo autenticado
-app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
-  const { fileId } = req.params;
+// Descargar CV del candidato
+app.get('/api/candidato/:candidatoId/cv', authenticateToken, (req, res) => {
+  const { candidatoId } = req.params;
 
-  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
+  // Obtener la ruta del CV
+  const query = `SELECT cv_path FROM candidatos WHERE idCandidatos = ?`;
+  
+  db.query(query, [candidatoId], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo CV:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0 || !results[0].cv_path) {
+      return res.status(404).json({ error: 'CV no encontrado' });
+    }
+    
+    const cvPath = results[0].cv_path;
+    const fullPath = path.join(__dirname, cvPath.replace('/', ''));
+    
+    // Verificar si el archivo existe
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Archivo CV no encontrado' });
+    }
+    
+    res.sendFile(fullPath);
+  });
 });
 
-// Eliminar archivo
-app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
-  const { fileId } = req.params;
+// Eliminar CV del candidato
+app.delete('/api/empleado/cv/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que el usuario solo puede eliminar su propio CV
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes eliminar tu propio CV' });
+  }
 
-  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
+  // Obtener la ruta actual del CV
+  const selectQuery = `SELECT cv_path FROM candidatos WHERE idCandidatos = ?`;
+  
+  db.query(selectQuery, [id], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo CV:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0 || !results[0].cv_path) {
+      return res.status(404).json({ error: 'CV no encontrado' });
+    }
+    
+    const cvPath = results[0].cv_path;
+    
+    // Eliminar referencia de la base de datos
+    const updateQuery = `UPDATE candidatos SET cv_path = NULL WHERE idCandidatos = ?`;
+    
+    db.query(updateQuery, [id], (err, result) => {
+      if (err) {
+        console.error('Error eliminando referencia del CV:', err);
+        return res.status(500).json({ error: 'Error eliminando CV' });
+      }
+      
+      // Eliminar archivo físico
+      const fullPath = path.join(__dirname, cvPath.replace('/', ''));
+      fs.unlink(fullPath, (fsErr) => {
+        if (fsErr) {
+          console.error('Error eliminando archivo físico:', fsErr);
+        }
+        
+        res.json({ message: 'CV eliminado exitosamente' });
+      });
+    });
+  });
 });
 
 // Middleware de manejo de errores para multer
