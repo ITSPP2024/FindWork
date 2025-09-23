@@ -1421,7 +1421,7 @@ app.get('/api/empleado/favoritos/:candidatoId', authenticateToken, (req, res) =>
       e.Nombre_Empresa as empresa_nombre,
       f.fecha_agregado
     FROM favoritos_candidato f
-    INNER JOIN empresas e ON f.empresa_id = e.idEmpresas
+    INNER JOIN empresa e ON f.empresa_id = e.idEmpresa
     WHERE f.candidato_id = ?
     ORDER BY f.fecha_agregado DESC
   `;
