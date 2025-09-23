@@ -1,4 +1,5 @@
 const express = require('express');
+const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -6,7 +7,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs-extra');
 const emailService = require('./utils/emailService');
-const { db } = require('./db-adapter');
 require('dotenv').config();
 
 const app = express();
@@ -33,8 +33,23 @@ fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
 fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
 
-// Database connection handled by ./db.ts and ./storage.ts
-console.log('✅ Conectado a PostgreSQL database');
+// Configuración de conexión a MySQL
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'admin',
+  database: 'powerman'
+});
+
+// Conectar a la base de datos
+db.connect((err) => {
+  if (err) {
+    console.error('⚠️  Error conectando a MySQL:', err.message);
+    console.log('💡 La aplicación funcionará con datos simulados.');
+    return;
+  }
+  console.log('✅ Conectado a MySQL database');
+});
 
 // JWT Secret
 // JWT Secret con fallback para desarrollo
@@ -45,7 +60,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 // Configuración de Multer para diferentes tipos de archivos
-const multerStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const fileType = req.body.fileType || 'documents';
     let uploadPath = path.join(__dirname, 'uploads');
@@ -109,7 +124,7 @@ const fileFilter = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage: multerStorage,
+  storage: storage,
   fileFilter: fileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB límite
@@ -1019,143 +1034,31 @@ app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('emplea
 // RUTAS DE ARCHIVOS
 // ========================================
 
-// Ruta específica para subir CV (solo para empleados)
-app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.single('cv'), (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se ha subido ningún CV' });
-    }
-
-    const fileInfo = {
-      originalName: req.file.originalname,
-      filename: req.file.filename,
-      mimetype: req.file.mimetype,
-      size: req.file.size,
-      userId: req.user.id,
-      uploadDate: new Date().toISOString(),
-      url: `/uploads/cvs/${req.file.filename}`
-    };
-
-    // Guardar información del CV en la base de datos
-    const insertQuery = `
-      INSERT INTO archivos_usuario (usuario_id, usuario_tipo, nombre_archivo, nombre_original, 
-                                   tipo_archivo, tamaño_archivo, ruta_archivo, tipo_documento)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    db.query(insertQuery, [
-      req.user.id,
-      'empleado',
-      req.file.filename,
-      req.file.originalname,
-      req.file.mimetype,
-      req.file.size,
-      fileInfo.url,
-      'cv'
-    ], (err, result) => {
-      if (err) {
-        console.error('Error guardando información del CV:', err);
-        return res.status(500).json({ error: 'Error guardando información del CV' });
-      }
-      
-      res.json({
-        message: 'CV subido exitosamente',
-        file: {
-          id: result.insertId,
-          ...fileInfo,
-          fileType: 'cv'
-        }
-      });
-    });
-  } catch (error) {
-    console.error('Error subiendo CV:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-});
-
-// Obtener CVs de un candidato específico (para empresas)
-app.get('/api/candidato/:candidatoId/cvs', authenticateToken, requireRole('empresa'), (req, res) => {
-  const { candidatoId } = req.params;
-
-  const query = `
-    SELECT id, nombre_original, nombre_archivo, tipo_archivo, tamaño_archivo, 
-           ruta_archivo, fecha_subida
-    FROM archivos_usuario 
-    WHERE usuario_id = ? AND usuario_tipo = 'empleado' AND tipo_documento = 'cv'
-    ORDER BY fecha_subida DESC
-  `;
-
-  db.query(query, [candidatoId], (err, results) => {
-    if (err) {
-      console.error('Error obteniendo CVs del candidato:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    // Formatear la respuesta
-    const cvs = results.map(file => ({
-      id: file.id,
-      originalName: file.nombre_original,
-      filename: file.nombre_archivo,
-      mimetype: file.tipo_archivo,
-      size: file.tamaño_archivo,
-      url: file.ruta_archivo,
-      uploadDate: file.fecha_subida
-    }));
-    
-    res.json(cvs);
-  });
-});
-
-// Subir archivo general (CVs, documentos, etc.)
+// Subir archivo
 app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No se ha subido ningún archivo' });
     }
 
-    const fileType = req.body.fileType || 'documento';
-    const usuarioTipo = req.user.tipo === 'empleado' ? 'empleado' : 'empresa';
-    
     const fileInfo = {
+      id: Date.now().toString(),
       originalName: req.file.originalname,
       filename: req.file.filename,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      fileType: fileType,
+      fileType: req.body.fileType || 'documents',
       userId: req.user.id,
       uploadDate: new Date().toISOString(),
       url: `/uploads/${req.body.fileType || 'documents'}/${req.file.filename}`
     };
 
-    // Guardar información del archivo en la base de datos
-    const insertQuery = `
-      INSERT INTO archivos_usuario (usuario_id, usuario_tipo, nombre_archivo, nombre_original, 
-                                   tipo_archivo, tamaño_archivo, ruta_archivo, tipo_documento)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    db.query(insertQuery, [
-      req.user.id,
-      usuarioTipo,
-      req.file.filename,
-      req.file.originalname,
-      req.file.mimetype,
-      req.file.size,
-      fileInfo.url,
-      fileType
-    ], (err, result) => {
-      if (err) {
-        console.error('Error guardando información del archivo:', err);
-        return res.status(500).json({ error: 'Error guardando información del archivo' });
-      }
-      
-      res.json({
-        message: 'Archivo subido exitosamente',
-        file: {
-          id: result.insertId,
-          ...fileInfo
-        }
-      });
+    // Usar la variable global de conectividad
+
+
+    res.json({
+      message: 'Archivo subido exitosamente',
+      file: fileInfo
     });
   } catch (error) {
     console.error('Error subiendo archivo:', error);
@@ -1166,151 +1069,27 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
 // Obtener archivos del usuario
 app.get('/api/files/:userId', authenticateToken, (req, res) => {
   const { userId } = req.params;
-  const { tipo } = req.query; // Filtrar por tipo: 'cv', 'documento', etc.
   
   // Verificar que el usuario solo puede ver sus propios archivos
   if (req.user.id !== parseInt(userId)) {
     return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
   }
 
-  let query = `
-    SELECT id, nombre_original, nombre_archivo, tipo_archivo, tamaño_archivo, 
-           ruta_archivo, tipo_documento, fecha_subida
-    FROM archivos_usuario 
-    WHERE usuario_id = ?
-  `;
-  
-  let queryParams = [userId];
-  
-  // Agregar filtro por tipo si se especifica
-  if (tipo) {
-    query += ' AND tipo_documento = ?';
-    queryParams.push(tipo);
-  }
-  
-  query += ' ORDER BY fecha_subida DESC';
-
-  db.query(query, queryParams, (err, results) => {
-    if (err) {
-      console.error('Error obteniendo archivos:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    // Formatear la respuesta
-    const archivos = results.map(file => ({
-      id: file.id,
-      originalName: file.nombre_original,
-      filename: file.nombre_archivo,
-      mimetype: file.tipo_archivo,
-      size: file.tamaño_archivo,
-      url: file.ruta_archivo,
-      fileType: file.tipo_documento,
-      uploadDate: file.fecha_subida
-    }));
-    
-    res.json(archivos);
-  });
+  res.json([]);
 });
 
 // Descargar archivo autenticado
 app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  // Verificar que el archivo pertenece al usuario
-  const query = `
-    SELECT nombre_archivo, nombre_original, ruta_archivo, tipo_documento, usuario_id
-    FROM archivos_usuario 
-    WHERE id = ?
-  `;
-  
-  db.query(query, [fileId], (err, results) => {
-    if (err) {
-      console.error('Error obteniendo información del archivo:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Archivo no encontrado' });
-    }
-    
-    const archivo = results[0];
-    
-    // Verificar que el usuario puede acceder al archivo
-    if (archivo.usuario_id !== req.user.id) {
-      return res.status(403).json({ error: 'No tienes permisos para descargar este archivo' });
-    }
-    
-    const filePath = path.join(__dirname, 'uploads', archivo.tipo_documento === 'cv' ? 'cvs' : 
-                                archivo.tipo_documento === 'foto_perfil' ? 'profiles' : 'documents', 
-                                archivo.nombre_archivo);
-    
-    // Verificar si el archivo existe
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'Archivo físico no encontrado' });
-    }
-    
-    // Configurar headers para descarga
-    res.setHeader('Content-Disposition', `attachment; filename="${archivo.nombre_original}"`);
-    res.setHeader('Content-Type', 'application/octet-stream');
-    
-    // Enviar el archivo
-    res.sendFile(filePath);
-  });
+  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
 });
 
 // Eliminar archivo
 app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
   const { fileId } = req.params;
 
-  // Obtener información del archivo
-  const selectQuery = `
-    SELECT nombre_archivo, ruta_archivo, tipo_documento, usuario_id
-    FROM archivos_usuario 
-    WHERE id = ?
-  `;
-  
-  db.query(selectQuery, [fileId], (err, results) => {
-    if (err) {
-      console.error('Error obteniendo información del archivo:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Archivo no encontrado' });
-    }
-    
-    const archivo = results[0];
-    
-    // Verificar que el usuario puede eliminar el archivo
-    if (archivo.usuario_id !== req.user.id) {
-      return res.status(403).json({ error: 'No tienes permisos para eliminar este archivo' });
-    }
-    
-    // Eliminar registro de la base de datos
-    const deleteQuery = 'DELETE FROM archivos_usuario WHERE id = ?';
-    
-    db.query(deleteQuery, [fileId], (err, result) => {
-      if (err) {
-        console.error('Error eliminando archivo de la base de datos:', err);
-        return res.status(500).json({ error: 'Error eliminando archivo' });
-      }
-      
-      // Eliminar archivo físico
-      const filePath = path.join(__dirname, 'uploads', 
-                                archivo.tipo_documento === 'cv' ? 'cvs' : 
-                                archivo.tipo_documento === 'foto_perfil' ? 'profiles' : 'documents', 
-                                archivo.nombre_archivo);
-      
-      fs.unlink(filePath, (fsErr) => {
-        if (fsErr) {
-          console.error('Error eliminando archivo físico:', fsErr);
-          // No devolver error porque el registro ya se eliminó
-        }
-        
-        res.json({ message: 'Archivo eliminado exitosamente' });
-      });
-    });
-  });
+  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
 });
 
 // Middleware de manejo de errores para multer
