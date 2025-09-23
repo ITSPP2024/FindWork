@@ -28,10 +28,9 @@ app.use(express.json());
 
 // Nota: Archivos protegidos por autenticación - no serving estático público
 
-// Crear directorio uploads si no existe
-fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
-fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
-fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
+// Crear directorios Fotos y PDF si no existen
+fs.ensureDirSync(path.join(__dirname, '..', 'Fotos'));
+fs.ensureDirSync(path.join(__dirname, '..', 'PDF'));
 
 // Configuración de conexión a MySQL
 const db = mysql.createConnection({
@@ -63,17 +62,17 @@ if (!process.env.JWT_SECRET) {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const fileType = req.body.fileType || 'documents';
-    let uploadPath = path.join(__dirname, 'uploads');
+    let uploadPath;
     
     switch (fileType) {
       case 'profile':
-        uploadPath = path.join(uploadPath, 'profiles');
+        uploadPath = path.join(__dirname, '..', 'Fotos'); // Carpeta Fotos
         break;
       case 'cv':
-        uploadPath = path.join(uploadPath, 'cvs');
+        uploadPath = path.join(__dirname, '..', 'PDF'); // Carpeta PDF
         break;
       default:
-        uploadPath = path.join(uploadPath, 'documents');
+        uploadPath = path.join(__dirname, '..', 'PDF'); // Por defecto en PDF
     }
     
     cb(null, uploadPath);
@@ -399,7 +398,7 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
   const profileUpload = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, 'uploads', 'profiles'));
+        cb(null, path.join(__dirname, '..', 'Fotos'));
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -426,7 +425,7 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
       return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
 
-    const fotoPath = `/uploads/profiles/${req.file.filename}`;
+    const fotoPath = `/Fotos/${req.file.filename}`;
 
     // Usar la variable global de conectividad
 
@@ -550,7 +549,7 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
   const profileUpload = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, 'uploads', 'profiles'));
+        cb(null, path.join(__dirname, '..', 'Fotos'));
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -577,7 +576,7 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
       return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
 
-    const fotoPath = `/uploads/profiles/${req.file.filename}`;
+    const fotoPath = `/Fotos/${req.file.filename}`;
 
     // Usar la variable global de conectividad
 
@@ -1050,7 +1049,7 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
       fileType: req.body.fileType || 'documents',
       userId: req.user.id,
       uploadDate: new Date().toISOString(),
-      url: `/uploads/${req.body.fileType || 'documents'}/${req.file.filename}`
+      url: req.body.fileType === 'profile' ? `/Fotos/${req.file.filename}` : `/PDF/${req.file.filename}`
     };
 
     // Usar la variable global de conectividad
@@ -1074,7 +1073,7 @@ app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.si
     return res.status(400).json({ error: 'No se ha subido ningún CV' });
   }
 
-  const cvPath = `/uploads/cvs/${req.file.filename}`;
+  const cvPath = `/PDF/${req.file.filename}`;
 
   // Actualizar la ruta del CV en la base de datos
   const updateQuery = `UPDATE candidatos SET cv_path = ? WHERE idCandidatos = ?`;
@@ -1148,7 +1147,7 @@ app.get('/api/candidato/:candidatoId/cv', authenticateToken, (req, res) => {
     }
     
     const cvPath = results[0].cv_path;
-    const fullPath = path.join(__dirname, cvPath.replace('/', ''));
+    const fullPath = path.join(__dirname, '..', cvPath.replace('/', ''));
     
     // Verificar si el archivo existe
     if (!fs.existsSync(fullPath)) {
@@ -1193,7 +1192,7 @@ app.delete('/api/empleado/cv/:id', authenticateToken, requireRole('empleado'), (
       }
       
       // Eliminar archivo físico
-      const fullPath = path.join(__dirname, cvPath.replace('/', ''));
+      const fullPath = path.join(__dirname, '..', cvPath.replace('/', ''));
       fs.unlink(fullPath, (fsErr) => {
         if (fsErr) {
           console.error('Error eliminando archivo físico:', fsErr);
