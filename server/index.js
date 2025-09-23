@@ -505,7 +505,7 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
       
       // UPSERT experiencia en expedientes (actualizar o crear)
       const upsertExpedientes = `
-        INSERT INTO expedientes (candidatos_id, Experiencia)
+        INSERT INTO expedientes (candidato_id, Experiencia)
         VALUES (?, ?)
         ON DUPLICATE KEY UPDATE Experiencia = VALUES(Experiencia)
       `;
