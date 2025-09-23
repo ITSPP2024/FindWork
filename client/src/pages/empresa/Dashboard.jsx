@@ -47,7 +47,7 @@ const EmpresaDashboard = () => {
       const response = await api.get(`/empresa/vacantes/${user.id}`);
       setVacantes(response.data);
     } catch (error) {
-      console.error('Error cargando vacantes:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ const EmpresaDashboard = () => {
       const response = await api.get(`/empresa/aplicaciones/${user.id}`);
       setAplicaciones(response.data);
     } catch (error) {
-      console.error('Error cargando aplicaciones:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }

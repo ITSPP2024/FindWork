@@ -39,7 +39,7 @@ const EmpleadoDashboard = () => {
       const response = await api.get('/vacantes');
       setVacantes(response.data);
     } catch (error) {
-      console.error('Error cargando vacantes:', error);
+      // Error handled silently
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ const EmpleadoDashboard = () => {
         setAplicaciones(result.data);
       }
     } catch (error) {
-      console.error('Error cargando aplicaciones:', error);
+      // Error handled silently
     }
   };
 
@@ -74,7 +74,7 @@ const EmpleadoDashboard = () => {
         setFavoritesMap(map);
       }
     } catch (error) {
-      console.error('Error cargando favoritos:', error);
+      // Error handled silently
     }
   };
 
@@ -97,10 +97,9 @@ const EmpleadoDashboard = () => {
         
         // Mostrar mensaje de confirmación
         const message = action === 'added' ? 'Agregado a favoritos ❤️' : 'Eliminado de favoritos 💔';
-        console.log(message);
       }
     } catch (error) {
-      console.error('Error actualizando favorito:', error);
+      // Error handled silently
     }
   };
 

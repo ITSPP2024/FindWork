@@ -247,8 +247,7 @@ app.post('/api/login', async (req, res) => {
     // IMPORTANTE: En producción con MySQL, aquí deberías verificar contraseñas hasheadas
     // Por ahora, para desarrollo local, se permite acceso sin verificación de contraseña
     // TODO: Implementar bcrypt.compare() cuando tengas contraseñas hasheadas en MySQL
-    console.log('⚠️  ADVERTENCIA: Verificación de contraseña deshabilitada para desarrollo');
-    console.log('💡 En producción, implementar verificación con bcrypt para seguridad');
+    // TODO: Implement proper password verification with bcrypt for production
 
     const token = jwt.sign(
       { 

@@ -42,7 +42,6 @@ const EditarPerfil = () => {
         setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
       }
     } catch (error) {
-      console.error('Error cargando perfil:', error);
     } finally {
       setLoading(false);
     }
@@ -53,7 +52,6 @@ const EditarPerfil = () => {
       const response = await api.get(`/files/${user.id}`);
       setArchivos(response.data);
     } catch (error) {
-      console.error('Error cargando archivos:', error);
     }
   };
 
@@ -83,7 +81,6 @@ const EditarPerfil = () => {
       // Recargar el perfil para mostrar los datos actualizados
       await cargarPerfil();
     } catch (error) {
-      console.error('Error guardando perfil:', error);
       const errorMessage = error.response?.data?.error || 'Error al guardar el perfil';
     } finally {
       setGuardando(false);
@@ -118,7 +115,6 @@ const EditarPerfil = () => {
       setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
       
     } catch (error) {
-      console.error('Error subiendo foto:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir la foto';
 
     } finally {
@@ -145,7 +141,6 @@ const EditarPerfil = () => {
       
       e.target.value = ''; // Limpiar input
     } catch (error) {
-      console.error('Error subiendo documento:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir el documento';
 
     }
@@ -158,7 +153,6 @@ const EditarPerfil = () => {
       cargarArchivos(); // Recargar lista de archivos
       
     } catch (error) {
-      console.error('Error eliminando archivo:', error);
       const errorMessage = error.response?.data?.error || 'Error al eliminar el archivo';
 
     }
