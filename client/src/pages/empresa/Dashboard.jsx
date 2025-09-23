@@ -155,6 +155,7 @@ const EmpresaDashboard = () => {
           <h1>FindWork</h1>
           <div className="nav-links">
             <Link to="/empresa/perfil" className="nav-link">Mi Perfil</Link>
+            <Link to="/empresa/buscar-candidatos" className="nav-link">🔍 Buscar Candidatos</Link>
             <span className="user-info">Hola, {user?.nombre}</span>
             <button onClick={logout} className="logout-btn">Cerrar Sesión</button>
           </div>

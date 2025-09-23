@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/EditarPerfil.css';
 import api from '../../services/api';
 
 const EditarPerfil = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [perfil, setPerfil] = useState({
     nombre: '',
     descripcion: '',
@@ -57,6 +58,18 @@ const EditarPerfil = () => {
 
   const manejarCambio = (e) => {
     const { name, value } = e.target;
+    
+    // Límites de caracteres
+    const limits = {
+      descripcion: 500,
+      experiencia: 1000
+    };
+    
+    // Verificar límite si el campo tiene uno definido
+    if (limits[name] && value.length > limits[name]) {
+      return; // No actualizar si excede el límite
+    }
+    
     setPerfil(prev => ({
       ...prev,
       [name]: value
@@ -80,6 +93,9 @@ const EditarPerfil = () => {
       
       // Recargar el perfil para mostrar los datos actualizados
       await cargarPerfil();
+      
+      // Redirigir a la página de perfil después de guardar exitosamente
+      navigate('/empleado/perfil');
     } catch (error) {
       const errorMessage = error.response?.data?.error || 'Error al guardar el perfil';
     } finally {
@@ -241,6 +257,12 @@ const EditarPerfil = () => {
                 rows="4"
                 placeholder="Cuéntanos sobre ti, tus objetivos profesionales, habilidades destacadas..."
               />
+              <div className={`contador-caracteres ${
+                perfil.descripcion.length > 450 ? 'danger' : 
+                perfil.descripcion.length > 400 ? 'warning' : ''
+              }`}>
+                {perfil.descripcion.length}/500 caracteres
+              </div>
             </div>
 
             <div className="campo">
@@ -253,6 +275,12 @@ const EditarPerfil = () => {
                 rows="6"
                 placeholder="Describe tu experiencia laboral, proyectos destacados, logros..."
               />
+              <div className={`contador-caracteres ${
+                perfil.experiencia.length > 900 ? 'danger' : 
+                perfil.experiencia.length > 800 ? 'warning' : ''
+              }`}>
+                {perfil.experiencia.length}/1000 caracteres
+              </div>
             </div>
 
             <button type="submit" disabled={guardando} className="btn-guardar">

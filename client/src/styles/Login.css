@@ -117,3 +117,18 @@
   color: #4a5568;
   font-size: 0.9rem;
 }
+
+.toggle-mode-btn {
+  background: none;
+  border: none;
+  color: #007bff;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: underline;
+  padding: 0;
+  margin-left: 5px;
+}
+
+.toggle-mode-btn:hover {
+  color: #0056b3;
+}

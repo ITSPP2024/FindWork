@@ -235,6 +235,7 @@ const EmpleadoDashboard = () => {
               Favoritos ({favoritos.length})
             </button>
             <Link to="/empleado/perfil" className="nav-link">Mi Perfil</Link>
+            <Link to="/empleado/buscar-empresas" className="nav-link">🏢 Buscar Empresas</Link>
             <span className="user-info">Hola, {user?.nombre}</span>
             <button onClick={logout} className="logout-btn">Cerrar Sesión</button>
           </div>
