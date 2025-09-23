@@ -53,9 +53,25 @@ const EditarPerfil = () => {
   const cargarArchivos = async () => {
     try {
       const response = await api.get(`/files/${user.id}`);
-      setArchivos(response.data);
+      const data = response.data;
+      
+      // Convertir el formato simple a array para compatibilidad
+      const archivosArray = [];
+      if (data.Documentos) {
+        archivosArray.push({
+          id: 'cv',
+          originalName: 'CV',
+          uploadDate: new Date().toISOString(),
+          size: 0,
+          url: data.Documentos,
+          tipo: 'cv'
+        });
+      }
+      
+      setArchivos(archivosArray);
     } catch (error) {
       console.error('Error cargando archivos:', error);
+      setArchivos([]); // Asegurar que siempre sea un array
     }
   };
 
