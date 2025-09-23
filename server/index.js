@@ -1076,7 +1076,7 @@ app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.si
   const cvPath = `/PDF/${req.file.filename}`;
 
   // Actualizar la ruta del CV en la base de datos
-  const updateQuery = `UPDATE candidatos SET cv_path = ? WHERE idCandidatos = ?`;
+  const updateQuery = `UPDATE candidatos SET Documentos = ? WHERE idCandidatos = ?`;
   
   db.query(updateQuery, [cvPath, req.user.id], (err, result) => {
     if (err) {
@@ -1089,7 +1089,7 @@ app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.si
     
     res.json({ 
       message: 'CV subido exitosamente',
-      cv_path: cvPath,
+      Documentos: cvPath,
       file: {
         originalName: req.file.originalname,
         filename: req.file.filename,
@@ -1110,7 +1110,7 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
 
   // Obtener información básica del candidato incluyendo archivos
   const query = `
-    SELECT foto_perfil, cv_path 
+    SELECT foto_perfil, Documentos 
     FROM candidatos 
     WHERE idCandidatos = ?
   `;
@@ -1122,7 +1122,7 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
     }
     
     if (results.length === 0) {
-      return res.json({ foto_perfil: null, cv_path: null });
+      return res.json({ foto_perfil: null, Documentos: null });
     }
     
     res.json(results[0]);
@@ -1134,7 +1134,7 @@ app.get('/api/candidato/:candidatoId/cv', authenticateToken, (req, res) => {
   const { candidatoId } = req.params;
 
   // Obtener la ruta del CV
-  const query = `SELECT cv_path FROM candidatos WHERE idCandidatos = ?`;
+  const query = `SELECT Documentos FROM candidatos WHERE idCandidatos = ?`;
   
   db.query(query, [candidatoId], (err, results) => {
     if (err) {
@@ -1142,11 +1142,11 @@ app.get('/api/candidato/:candidatoId/cv', authenticateToken, (req, res) => {
       return res.status(500).json({ error: 'Error interno del servidor' });
     }
     
-    if (results.length === 0 || !results[0].cv_path) {
+    if (results.length === 0 || !results[0].Documentos) {
       return res.status(404).json({ error: 'CV no encontrado' });
     }
     
-    const cvPath = results[0].cv_path;
+    const cvPath = results[0].Documentos;
     const fullPath = path.join(__dirname, '..', cvPath.replace('/', ''));
     
     // Verificar si el archivo existe
@@ -1168,7 +1168,7 @@ app.delete('/api/empleado/cv/:id', authenticateToken, requireRole('empleado'), (
   }
 
   // Obtener la ruta actual del CV
-  const selectQuery = `SELECT cv_path FROM candidatos WHERE idCandidatos = ?`;
+  const selectQuery = `SELECT Documentos FROM candidatos WHERE idCandidatos = ?`;
   
   db.query(selectQuery, [id], (err, results) => {
     if (err) {
@@ -1176,14 +1176,14 @@ app.delete('/api/empleado/cv/:id', authenticateToken, requireRole('empleado'), (
       return res.status(500).json({ error: 'Error interno del servidor' });
     }
     
-    if (results.length === 0 || !results[0].cv_path) {
+    if (results.length === 0 || !results[0].Documentos) {
       return res.status(404).json({ error: 'CV no encontrado' });
     }
     
-    const cvPath = results[0].cv_path;
+    const cvPath = results[0].Documentos;
     
     // Eliminar referencia de la base de datos
-    const updateQuery = `UPDATE candidatos SET cv_path = NULL WHERE idCandidatos = ?`;
+    const updateQuery = `UPDATE candidatos SET Documentos = NULL WHERE idCandidatos = ?`;
     
     db.query(updateQuery, [id], (err, result) => {
       if (err) {
