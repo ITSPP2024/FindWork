@@ -77,11 +77,9 @@ const EmpresaDashboard = () => {
       });
       setShowCreateForm(false);
       fetchVacantes();
-      alert('✅ Vacante creada exitosamente');
     } catch (error) {
       console.error('Error creando vacante:', error);
       const errorMessage = error.response?.data?.error || 'Error al crear la vacante';
-      alert(`❌ Error: ${errorMessage}`);
     }
   };
 
@@ -101,13 +99,10 @@ const EmpresaDashboard = () => {
         });
       }
       
-      fetchAplicaciones(); // Refresh applications
-      
-      // Mostrar feedback de éxito
-      alert('Estado actualizado exitosamente');
+      fetchAplicaciones();
     } catch (error) {
       console.error('Error actualizando aplicación:', error);
-      alert('Error actualizando estado: ' + (error.response?.data?.error || 'Error desconocido'));
+      // Error handled silently
     }
   };
 

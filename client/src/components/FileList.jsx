@@ -28,9 +28,6 @@ const FileList = ({ fileType, title = 'Mis archivos', allowDelete = true, refres
   };
 
   const handleDelete = async (fileId, filename) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este archivo?')) {
-      return;
-    }
 
     setDeleting(fileId);
     try {
@@ -38,7 +35,7 @@ const FileList = ({ fileType, title = 'Mis archivos', allowDelete = true, refres
       setFiles(files.filter(file => file.id !== fileId));
     } catch (error) {
       console.error('Error eliminando archivo:', error);
-      alert('Error eliminando archivo: ' + (error.response?.data?.error || 'Error desconocido'));
+      // Error handled silently
     } finally {
       setDeleting(null);
     }

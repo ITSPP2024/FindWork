@@ -116,11 +116,9 @@ const EmpleadoDashboard = () => {
     const result = await applicationsAPI.applyToJob(applicationData);
     
     if (result.success) {
-      alert('¡Aplicación enviada exitosamente!');
       fetchMisAplicaciones();
       return result;
     } else {
-      alert(`Error: ${result.error}`);
       return result;
     }
   };

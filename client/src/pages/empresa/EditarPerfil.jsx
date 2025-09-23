@@ -16,7 +16,6 @@ const EditarPerfilEmpresa = () => {
   const [archivos, setArchivos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [mensaje, setMensaje] = useState('');
   const [previewFoto, setPreviewFoto] = useState(null);
   const [subiendoFoto, setSubiendoFoto] = useState(false);
 
@@ -44,7 +43,7 @@ const EditarPerfilEmpresa = () => {
       }
     } catch (error) {
       console.error('Error cargando perfil:', error);
-      setMensaje('Error cargando el perfil');
+      ('Error cargando el perfil');
     } finally {
       setLoading(false);
     }
@@ -70,7 +69,7 @@ const EditarPerfilEmpresa = () => {
   const guardarPerfil = async (e) => {
     e.preventDefault();
     setGuardando(true);
-    setMensaje('');
+    ('');
 
     try {
       const response = await api.put(`/empresa/perfil/${user.id}`, {
@@ -80,15 +79,15 @@ const EditarPerfilEmpresa = () => {
         ubicacion: perfil.ubicacion
       });
 
-      setMensaje('✅ Perfil actualizado exitosamente');
-      setTimeout(() => setMensaje(''), 3000);
+      ('✅ Perfil actualizado exitosamente');
+      setTimeout(() => (''), 3000);
       
       // Recargar el perfil para mostrar los datos actualizados
       await cargarPerfil();
     } catch (error) {
       console.error('Error guardando perfil:', error);
       const errorMessage = error.response?.data?.error || 'Error al guardar el perfil';
-      setMensaje(`❌ Error: ${errorMessage}`);
+      (`❌ Error: ${errorMessage}`);
     } finally {
       setGuardando(false);
     }
@@ -100,18 +99,18 @@ const EditarPerfilEmpresa = () => {
 
     // Verificar que sea una imagen
     if (!archivo.type.startsWith('image/')) {
-      setMensaje('❌ Por favor selecciona una imagen válida');
+      ('❌ Por favor selecciona una imagen válida');
       return;
     }
 
     // Verificar tamaño (máximo 5MB)
     if (archivo.size > 5 * 1024 * 1024) {
-      setMensaje('❌ La imagen no puede ser mayor a 5MB');
+      ('❌ La imagen no puede ser mayor a 5MB');
       return;
     }
 
     setSubiendoFoto(true);
-    setMensaje('');
+    ('');
 
     const formData = new FormData();
     formData.append('foto', archivo);
@@ -122,12 +121,12 @@ const EditarPerfilEmpresa = () => {
       const data = response.data;
       setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
       setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
-      setMensaje('✅ Foto de perfil actualizada exitosamente');
-      setTimeout(() => setMensaje(''), 3000);
+      ('✅ Foto de perfil actualizada exitosamente');
+      setTimeout(() => (''), 3000);
     } catch (error) {
       console.error('Error subiendo foto:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir la foto';
-      setMensaje(`❌ ${errorMessage}`);
+      (`❌ ${errorMessage}`);
     } finally {
       setSubiendoFoto(false);
     }
@@ -139,7 +138,7 @@ const EditarPerfilEmpresa = () => {
 
     // Verificar que sea un PDF
     if (archivo.type !== 'application/pdf') {
-      setMensaje('❌ Solo se permiten archivos PDF');
+      ('❌ Solo se permiten archivos PDF');
       return;
     }
 
@@ -149,14 +148,14 @@ const EditarPerfilEmpresa = () => {
 
     try {
       await api.post('/upload', formData);
-      setMensaje('✅ Documento subido exitosamente');
+      ('✅ Documento subido exitosamente');
       cargarArchivos(); // Recargar lista de archivos
-      setTimeout(() => setMensaje(''), 3000);
+      setTimeout(() => (''), 3000);
       e.target.value = ''; // Limpiar input
     } catch (error) {
       console.error('Error subiendo documento:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir el documento';
-      setMensaje(`❌ ${errorMessage}`);
+      (`❌ ${errorMessage}`);
     }
   };
 
@@ -165,13 +164,13 @@ const EditarPerfilEmpresa = () => {
 
     try {
       await api.delete(`/files/${archivoId}`);
-      setMensaje('✅ Archivo eliminado exitosamente');
+      ('✅ Archivo eliminado exitosamente');
       cargarArchivos(); // Recargar lista de archivos
-      setTimeout(() => setMensaje(''), 3000);
+      setTimeout(() => (''), 3000);
     } catch (error) {
       console.error('Error eliminando archivo:', error);
       const errorMessage = error.response?.data?.error || 'Error al eliminar el archivo';
-      setMensaje(`❌ ${errorMessage}`);
+      (`❌ ${errorMessage}`);
     }
   };
 
