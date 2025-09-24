@@ -53,9 +53,13 @@ const EditarPerfilEmpresa = () => {
   const cargarArchivos = async () => {
     try {
       const response = await api.get(`/files/${user.id}`);
-      setArchivos(response.data);
+      const data = response.data;
+      
+      // Para empresas, no hay documentos, solo logo
+      setArchivos([]); // Las empresas no tienen archivos de documentos
     } catch (error) {
       console.error('Error cargando archivos:', error);
+      setArchivos([]); // Asegurar que siempre sea un array
     }
   };
 
