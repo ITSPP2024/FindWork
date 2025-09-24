@@ -1314,8 +1314,9 @@ app.post('/api/register/empleado', async (req, res) => {
 
       // Insertar nuevo candidato
       const insertQuery = `
-        INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, Tipo_Usuario)
-        VALUES (?, ?, 'empleado')
+       INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, password, Tipo_Usuario)
+VALUES (?, ?, ?, 'empleado')
+
       `;
 
       db.query(insertQuery, [nombre, email], (err2, result) => {
@@ -1368,8 +1369,9 @@ app.post('/api/register/empresa', async (req, res) => {
 
       // Insertar nueva empresa
       const insertQuery = `
-        INSERT INTO empresa (Nombre_Empresa, Correo_Empresa, Tipo_Usuario)
-        VALUES (?, ?, 'empresa')
+        INSERT INTO empresa (Nombre_Empresa, Correo_Empresa, password, Tipo_Usuario)
+VALUES (?, ?, ?, 'empresa')
+
       `;
       
       db.query(insertQuery, [nombre, email], (err2, result) => {

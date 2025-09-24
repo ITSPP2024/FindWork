@@ -56,13 +56,17 @@ export const AuthProvider = ({ children }) => {
       api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
       
       return { success: true, user: userData };
-    } catch (error) {
-      console.error('Error en login:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Error de conexión' 
-      };
-    }
+   } catch (error) {
+  console.error('Error en register:', {
+    message: error.message,
+    response: error.response?.data,
+    status: error.response?.status
+  });
+  return { 
+    success: false, 
+    error: error.response?.data?.error || error.message || 'Error de conexion' 
+  };
+}
   };
 
   const register = async (nombre, email, password, tipoUsuario) => {
