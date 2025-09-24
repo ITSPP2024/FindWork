@@ -1315,9 +1315,8 @@ app.post('/api/register/empleado', async (req, res) => {
       // Insertar nuevo candidato
       const insertQuery = `
        INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, password, Tipo_Usuario)
-VALUES (?, ?, ?, 'empleado')
-
-      `;
+  VALUES (?, ?, ?, ?)`
+    [nombre, email, '123456' , 'empleado'];
 
       db.query(insertQuery, [nombre, email], (err2, result) => {
         if (err2) {
