@@ -3,28 +3,6 @@ import api from '../services/api';
 
 const AuthContext = createContext({});
 
-export const register = async (email, password, tipoUsuario, nombre) => {
-  try {
-    const res = await fetch('http://localhost:3001/api/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, tipoUsuario, nombre })
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-      localStorage.setItem('token', data.token);
-      return { success: true, user: data.user };
-    } else {
-      return { success: false, error: data.error || 'Error desconocido' };
-    }
-  } catch (error) {
-    console.error('Error en register:', error);
-    return { success: false, error: 'Error conectando al servidor' };
-  }
-};
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -87,6 +65,28 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const register = async (nombre, email, password, tipoUsuario) => {
+    try {
+      const endpoint = tipoUsuario === 'empleado' 
+        ? '/register/empleado'
+        : '/register/empresa';
+
+      const response = await api.post(endpoint, {
+        nombre,
+        email,
+        password
+      });
+
+      return { success: true, user: response.data.user };
+    } catch (error) {
+      console.error('Error en register:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error de conexión' 
+      };
+    }
+  };
+
   const logout = () => {
     setToken(null);
     setUser(null);
@@ -99,6 +99,7 @@ export const AuthProvider = ({ children }) => {
     user,
     token,
     login,
+    register,
     logout,
     loading
   };

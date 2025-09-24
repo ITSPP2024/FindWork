@@ -8,7 +8,6 @@ const path = require('path');
 const fs = require('fs-extra');
 const emailService = require('./utils/emailService');
 require('dotenv').config();
-const bcrypt = require('bcryptjs'); // asegúrate de tenerlo importado al inicio
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -1282,6 +1281,10 @@ app.use((error, req, res, next) => {
   
   next(error);
 });
+
+// === RUTAS DE REGISTRO ===
+
+// Registro empleado
 app.post('/api/register/empleado', async (req, res) => {
   const { nombre, email, password } = req.body;
   console.log('🔹 Registro empleado recibido:', req.body);
@@ -1292,6 +1295,7 @@ app.post('/api/register/empleado', async (req, res) => {
   }
 
   try {
+    // Verificar si el email ya existe
     const checkQuery = 'SELECT * FROM candidatos WHERE Correo_Candidatos = ?';
     db.query(checkQuery, [email], async (err, results) => {
       if (err) {
@@ -1304,25 +1308,28 @@ app.post('/api/register/empleado', async (req, res) => {
         return res.status(400).json({ error: 'Email ya registrado' });
       }
 
+      // Hashear la contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
       console.log('✅ Contraseña hasheada');
 
+      // Insertar nuevo candidato
       const insertQuery = `
-        INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, Tipo_Usuario, password)
-        VALUES (?, ?, 'empleado', ?)
+        INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, Tipo_Usuario)
+        VALUES (?, ?, 'empleado')
       `;
 
-      db.query(insertQuery, [nombre, email, hashedPassword], (err2, result) => {
+      db.query(insertQuery, [nombre, email], (err2, result) => {
         if (err2) {
           console.error('❌ Error creando empleado en DB:', err2);
           return res.status(500).json({ error: 'Error creando cuenta' });
         }
 
         console.log('✅ Empleado creado, ID:', result.insertId);
-        const user = { id: result.insertId, nombre, email, tipo: 'empleado' };
-        const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-
-        res.json({ success: true, user, token });
+        res.json({ 
+          success: true, 
+          message: 'Cuenta creada exitosamente',
+          user: { id: result.insertId, nombre, email, tipo: 'empleado' }
+        });
       });
     });
   } catch (error) {
@@ -1342,6 +1349,7 @@ app.post('/api/register/empresa', async (req, res) => {
   }
 
   try {
+    // Verificar si el email ya existe
     const checkQuery = 'SELECT * FROM empresa WHERE Correo_Empresa = ?';
     db.query(checkQuery, [email], async (err, results) => {
       if (err) {
@@ -1354,24 +1362,28 @@ app.post('/api/register/empresa', async (req, res) => {
         return res.status(400).json({ error: 'Email ya registrado' });
       }
 
+      // Hashear la contraseña
       const hashedPassword = await bcrypt.hash(password, 10);
       console.log('✅ Contraseña empresa hasheada');
 
+      // Insertar nueva empresa
       const insertQuery = `
-        INSERT INTO empresa (Nombre_Empresa, Correo_Empresa, Tipo_Usuario, password)
-        VALUES (?, ?, 'empresa', ?)
+        INSERT INTO empresa (Nombre_Empresa, Correo_Empresa, Tipo_Usuario)
+        VALUES (?, ?, 'empresa')
       `;
-      db.query(insertQuery, [nombre, email, hashedPassword], (err2, result) => {
+      
+      db.query(insertQuery, [nombre, email], (err2, result) => {
         if (err2) {
           console.error('❌ Error creando empresa en DB:', err2);
           return res.status(500).json({ error: 'Error creando cuenta' });
         }
 
         console.log('✅ Empresa creada, ID:', result.insertId);
-        const user = { id: result.insertId, nombre, email, tipo: 'empresa' };
-        const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
-
-        res.json({ success: true, user, token });
+        res.json({ 
+          success: true, 
+          message: 'Cuenta creada exitosamente',
+          user: { id: result.insertId, nombre, email, tipo: 'empresa' }
+        });
       });
     });
   } catch (error) {

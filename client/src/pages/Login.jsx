@@ -14,7 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false); // modo registro
 
-  const { user, login } = useAuth();
+  const { user, login, register } = useAuth();
   const navigate = useNavigate();
 
   // Si ya está autenticado, redirigir
@@ -38,37 +38,25 @@ const Login = () => {
 
     try {
       if (isRegister) {
-        // Crear cuenta
-        const endpoint = formData.tipoUsuario === 'empleado' 
-          ? '/api/register/empleado'
-          : '/api/register/empresa';
-
-        const payload = {
-          nombre: formData.nombre,
-          email: formData.email,
-          password: formData.password
-        };
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          setError(data.error || 'Error creando cuenta');
-        } else {
-          // Registro exitoso, iniciar sesión automáticamente
-          const loginRes = await login(formData.email, formData.password, formData.tipoUsuario);
-          if (loginRes.success) {
-            navigate(`/${loginRes.user.tipo}/dashboard`);
+        // Registro
+        const registerResult = await register(
+          formData.nombre,
+          formData.email,
+          formData.password,
+          formData.tipoUsuario
+        );
+        
+        if (registerResult.success) {
+          // Registro exitoso, ahora hacer login automáticamente
+          const loginResult = await login(formData.email, formData.password, formData.tipoUsuario);
+          if (loginResult.success) {
+            navigate(`/${loginResult.user.tipo}/dashboard`);
           } else {
-            setError(loginRes.error);
+            setError('Cuenta creada, pero error al iniciar sesión. Intenta hacer login manualmente.');
           }
+        } else {
+          setError(registerResult.error);
         }
-
       } else {
         // Login normal
         const result = await login(formData.email, formData.password, formData.tipoUsuario);
