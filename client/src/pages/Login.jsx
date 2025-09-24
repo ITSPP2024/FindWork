@@ -5,12 +5,14 @@ import '../styles/Login.css';
 
 const Login = () => {
   const [formData, setFormData] = useState({
+    nombre: '',
     email: '',
     password: '',
     tipoUsuario: 'empleado'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isRegister, setIsRegister] = useState(false); // modo registro
 
   const { user, login } = useAuth();
   const navigate = useNavigate();
@@ -34,15 +36,53 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    const result = await login(formData.email, formData.password, formData.tipoUsuario);
-    
-    if (result.success) {
-      const dashboardPath = `/${result.user.tipo}/dashboard`;
-      navigate(dashboardPath);
-    } else {
-      setError(result.error);
+    try {
+      if (isRegister) {
+        // Crear cuenta
+        const endpoint = formData.tipoUsuario === 'empleado' 
+          ? '/api/register/empleado'
+          : '/api/register/empresa';
+
+        const payload = {
+          nombre: formData.nombre,
+          email: formData.email,
+          password: formData.password
+        };
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || 'Error creando cuenta');
+        } else {
+          // Registro exitoso, iniciar sesión automáticamente
+          const loginRes = await login(formData.email, formData.password, formData.tipoUsuario);
+          if (loginRes.success) {
+            navigate(`/${loginRes.user.tipo}/dashboard`);
+          } else {
+            setError(loginRes.error);
+          }
+        }
+
+      } else {
+        // Login normal
+        const result = await login(formData.email, formData.password, formData.tipoUsuario);
+        if (result.success) {
+          navigate(`/${result.user.tipo}/dashboard`);
+        } else {
+          setError(result.error);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error del servidor');
     }
-    
+
     setLoading(false);
   };
 
@@ -52,14 +92,10 @@ const Login = () => {
         <div className="login-header">
           <Link to="/" className="back-link">← Volver al inicio</Link>
           <h1>FindWork</h1>
-          <h2>Iniciar Sesión</h2>
+          <h2>{isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}</h2>
         </div>
 
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-message">{error}</div>}
 
         <form onSubmit={handleSubmit} className="login-form">
 
@@ -74,9 +110,27 @@ const Login = () => {
             >
               <option value="empleado">Empleado</option>
               <option value="empresa">Empresa</option>
-              <option value="admin">Administrador</option>
+              <option value="admin" disabled>Administrador</option>
             </select>
           </div>
+
+          {/* Solo mostrar campo nombre si es registro */}
+          {isRegister && (
+            <div className="form-group">
+              <label htmlFor="nombre">
+                {formData.tipoUsuario === 'empleado' ? 'Nombre del candidato' : 'Nombre de la empresa'}
+              </label>
+              <input
+                type="text"
+                id="nombre"
+                name="nombre"
+                value={formData.nombre}
+                onChange={handleChange}
+                placeholder="Ingresa tu nombre"
+                required
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="email">Correo Electrónico o Usuario</label>
@@ -109,12 +163,22 @@ const Login = () => {
             className="login-btn"
             disabled={loading}
           >
-            {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+            {loading ? (isRegister ? 'Creando cuenta...' : 'Iniciando sesión...') 
+                     : (isRegister ? 'Crear Cuenta' : 'Iniciar Sesión')}
           </button>
         </form>
 
         <div className="login-footer">
-          <p>Selecciona tu tipo de usuario y completa los datos</p>
+          <p>
+            {isRegister ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?'}{' '}
+            <button 
+              className="link-button" 
+              onClick={() => setIsRegister(!isRegister)}
+              disabled={loading}
+            >
+              {isRegister ? 'Iniciar Sesión' : 'Crear Cuenta'}
+            </button>
+          </p>
         </div>
       </div>
     </div>

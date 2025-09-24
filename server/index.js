@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const emailService = require('./utils/emailService');
 require('dotenv').config();
+const bcrypt = require('bcryptjs'); // asegúrate de tenerlo importado al inicio
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -28,18 +29,53 @@ app.use(express.json());
 
 // Nota: Archivos protegidos por autenticación - no serving estático público
 
-// Crear directorio uploads si no existe
-fs.ensureDirSync(path.join(__dirname, 'uploads', 'profiles'));
-fs.ensureDirSync(path.join(__dirname, 'uploads', 'cvs'));
-fs.ensureDirSync(path.join(__dirname, 'uploads', 'documents'));
+// Crear directorios Fotos y PDF si no existen
+fs.ensureDirSync(path.join(__dirname, '..', 'Fotos'));
+fs.ensureDirSync(path.join(__dirname, '..', 'PDF'));
 
 // Configuración de conexión a MySQL
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
   password: 'admin',
-  database: 'powerman'
+  database: 'powerman',
+  // Habilitar logs de SQL para debugging
+  debug: false,
+  multipleStatements: true
 });
+
+// Interceptar todas las queries para logging
+const originalQuery = db.query;
+db.query = function(sql, params, callback) {
+  // Si solo se pasan 2 argumentos, el segundo es el callback
+  if (typeof params === 'function') {
+    callback = params;
+    params = null;
+  }
+  
+  console.log('💾 [SQL QUERY]:', typeof sql === 'string' ? sql.trim() : sql);
+  if (params) {
+    console.log('📋 [SQL PARAMS]:', params);
+  }
+  
+  return originalQuery.call(this, sql, params, function(err, results, fields) {
+    if (err) {
+      console.error('❌ [SQL ERROR] ==========================================');
+      console.error('❌ [SQL ERROR] Query que falló:', typeof sql === 'string' ? sql.trim() : sql);
+      console.error('❌ [SQL ERROR] Parámetros:', params);
+      console.error('❌ [SQL ERROR] Código de error:', err.code);
+      console.error('❌ [SQL ERROR] Mensaje:', err.sqlMessage || err.message);
+      console.error('❌ [SQL ERROR] Error completo:', err);
+      console.error('❌ [SQL ERROR] ==========================================');
+    } else {
+      console.log('✅ [SQL SUCCESS] Query ejecutada exitosamente');
+    }
+    
+    if (callback) {
+      callback(err, results, fields);
+    }
+  });
+};
 
 // Conectar a la base de datos
 db.connect((err) => {
@@ -63,17 +99,17 @@ if (!process.env.JWT_SECRET) {
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const fileType = req.body.fileType || 'documents';
-    let uploadPath = path.join(__dirname, 'uploads');
+    let uploadPath;
     
     switch (fileType) {
       case 'profile':
-        uploadPath = path.join(uploadPath, 'profiles');
+        uploadPath = path.join(__dirname, '..', 'Fotos'); // Carpeta Fotos
         break;
       case 'cv':
-        uploadPath = path.join(uploadPath, 'cvs');
+        uploadPath = path.join(__dirname, '..', 'PDF'); // Carpeta PDF
         break;
       default:
-        uploadPath = path.join(uploadPath, 'documents');
+        uploadPath = path.join(__dirname, '..', 'PDF'); // Por defecto en PDF
     }
     
     cb(null, uploadPath);
@@ -388,10 +424,14 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 
 // Actualizar foto de perfil del empleado
 app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  console.log('🔍 [FOTO EMPLEADO] Iniciando subida de foto para empleado ID:', req.params.id);
+  console.log('🔍 [FOTO EMPLEADO] Usuario autenticado:', req.user);
+  
   const { id } = req.params;
   
   // Verificar que el usuario solo puede actualizar su propia foto
   if (req.user.id !== parseInt(id)) {
+    console.log('❌ [FOTO EMPLEADO] Error de permisos. Usuario:', req.user.id, 'intentando actualizar ID:', id);
     return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
   }
 
@@ -399,49 +439,71 @@ app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('emplead
   const profileUpload = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, 'uploads', 'profiles'));
+        const destPath = path.join(__dirname, '..', 'Fotos');
+        console.log('📁 [FOTO EMPLEADO] Destino de archivo:', destPath);
+        cb(null, destPath);
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
-        cb(null, `${req.user.id}_profile_${uniqueSuffix}${ext}`);
+        const filename = `${req.user.id}_profile_${uniqueSuffix}${ext}`;
+        console.log('📝 [FOTO EMPLEADO] Nombre del archivo generado:', filename);
+        cb(null, filename);
       }
     }),
     fileFilter: (req, file, cb) => {
+      console.log('🔍 [FOTO EMPLEADO] Verificando tipo de archivo:', file.mimetype);
       if (file.mimetype.startsWith('image/')) {
+        console.log('✅ [FOTO EMPLEADO] Tipo de archivo válido');
         cb(null, true);
       } else {
+        console.log('❌ [FOTO EMPLEADO] Tipo de archivo inválido:', file.mimetype);
         cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
       }
     },
     limits: { fileSize: 5 * 1024 * 1024 } // 5MB
   }).single('foto');
 
+  console.log('📤 [FOTO EMPLEADO] Procesando upload con multer...');
   profileUpload(req, res, function (err) {
     if (err) {
+      console.error('❌ [FOTO EMPLEADO] Error en multer:', err.message);
       return res.status(400).json({ error: err.message });
     }
 
+    console.log('🔍 [FOTO EMPLEADO] Archivo recibido:', req.file ? req.file.filename : 'NINGUNO');
     if (!req.file) {
+      console.error('❌ [FOTO EMPLEADO] NO SE RECIBIÓ ARCHIVO - req.file es undefined/null');
+      console.log('📋 [FOTO EMPLEADO] Headers recibidos:', req.headers);
+      console.log('📋 [FOTO EMPLEADO] Body recibido:', req.body);
       return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
 
-    const fotoPath = `/uploads/profiles/${req.file.filename}`;
+    const fotoPath = `/Fotos/${req.file.filename}`;
+    console.log('💾 [FOTO EMPLEADO] Ruta para guardar en DB:', fotoPath);
 
-    // Usar la variable global de conectividad
-
-
+    // Verificar si estamos conectados a la base de datos
+    console.log('🔗 [FOTO EMPLEADO] Intentando guardar en base de datos...');
     const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
+    console.log('📝 [FOTO EMPLEADO] Query SQL:', updateQuery);
+    console.log('📋 [FOTO EMPLEADO] Parámetros:', [fotoPath, id]);
     
     db.query(updateQuery, [fotoPath, id], (err, result) => {
       if (err) {
-        console.error('Error actualizando foto de perfil:', err);
-        return res.status(500).json({ error: 'Error actualizando foto de perfil' });
+        console.error('❌ [FOTO EMPLEADO] Error en base de datos:', err);
+        console.error('❌ [FOTO EMPLEADO] Error completo:', JSON.stringify(err, null, 2));
+        return res.status(500).json({ error: 'Error actualizando foto de perfil: ' + err.message });
       }
+      
+      console.log('📊 [FOTO EMPLEADO] Resultado de la query:', result);
+      console.log('📊 [FOTO EMPLEADO] Filas afectadas:', result.affectedRows);
+      
       if (result.affectedRows === 0) {
+        console.error('❌ [FOTO EMPLEADO] No se encontró el candidato con ID:', id);
         return res.status(404).json({ error: 'Perfil no encontrado' });
       }
       
+      console.log('✅ [FOTO EMPLEADO] Foto actualizada exitosamente!');
       res.json({ 
         message: 'Foto de perfil actualizada exitosamente',
         foto_perfil: fotoPath
@@ -550,7 +612,7 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
   const profileUpload = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, 'uploads', 'profiles'));
+        cb(null, path.join(__dirname, '..', 'Fotos'));
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -577,7 +639,7 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
       return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
     }
 
-    const fotoPath = `/uploads/profiles/${req.file.filename}`;
+    const fotoPath = `/Fotos/${req.file.filename}`;
 
     // Usar la variable global de conectividad
 
@@ -1050,7 +1112,7 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
       fileType: req.body.fileType || 'documents',
       userId: req.user.id,
       uploadDate: new Date().toISOString(),
-      url: `/uploads/${req.body.fileType || 'documents'}/${req.file.filename}`
+      url: req.body.fileType === 'profile' ? `/Fotos/${req.file.filename}` : `/PDF/${req.file.filename}`
     };
 
     // Usar la variable global de conectividad
@@ -1066,7 +1128,41 @@ app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => 
   }
 });
 
-// Obtener archivos del usuario
+// Subir CV (solo para empleados)
+app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.single('cv'), (req, res) => {
+  const { id } = req.params;
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se ha subido ningún CV' });
+  }
+
+  const cvPath = `/PDF/${req.file.filename}`;
+
+  // Actualizar la ruta del CV en la base de datos
+  const updateQuery = `UPDATE candidatos SET Documentos = ? WHERE idCandidatos = ?`;
+  
+  db.query(updateQuery, [cvPath, req.user.id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando ruta del CV:', err);
+      return res.status(500).json({ error: 'Error guardando CV' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Candidato no encontrado' });
+    }
+    
+    res.json({ 
+      message: 'CV subido exitosamente',
+      Documentos: cvPath,
+      file: {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        size: req.file.size
+      }
+    });
+  });
+});
+
+// Obtener archivos del usuario (simple)
 app.get('/api/files/:userId', authenticateToken, (req, res) => {
   const { userId } = req.params;
   
@@ -1075,21 +1171,100 @@ app.get('/api/files/:userId', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
   }
 
-  res.json([]);
+  // Obtener información básica del candidato incluyendo archivos
+  const query = `
+    SELECT foto_perfil, Documentos 
+    FROM candidatos 
+    WHERE idCandidatos = ?
+  `;
+  
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo archivos:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0) {
+      return res.json({ foto_perfil: null, Documentos: null });
+    }
+    
+    res.json(results[0]);
+  });
 });
 
-// Descargar archivo autenticado
-app.get('/api/files/:fileId/download', authenticateToken, (req, res) => {
-  const { fileId } = req.params;
+// Descargar CV del candidato
+app.get('/api/candidato/:candidatoId/cv', authenticateToken, (req, res) => {
+  const { candidatoId } = req.params;
 
-  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
+  // Obtener la ruta del CV
+  const query = `SELECT Documentos FROM candidatos WHERE idCandidatos = ?`;
+  
+  db.query(query, [candidatoId], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo CV:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0 || !results[0].Documentos) {
+      return res.status(404).json({ error: 'CV no encontrado' });
+    }
+    
+    const cvPath = results[0].Documentos;
+    const fullPath = path.join(__dirname, '..', cvPath.replace('/', ''));
+    
+    // Verificar si el archivo existe
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Archivo CV no encontrado' });
+    }
+    
+    res.sendFile(fullPath);
+  });
 });
 
-// Eliminar archivo
-app.delete('/api/files/:fileId', authenticateToken, (req, res) => {
-  const { fileId } = req.params;
+// Eliminar CV del candidato
+app.delete('/api/empleado/cv/:id', authenticateToken, requireRole('empleado'), (req, res) => {
+  const { id } = req.params;
+  
+  // Verificar que el usuario solo puede eliminar su propio CV
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes eliminar tu propio CV' });
+  }
 
-  res.status(500).json({ error: 'Funcionalidad no disponible aún' });
+  // Obtener la ruta actual del CV
+  const selectQuery = `SELECT Documentos FROM candidatos WHERE idCandidatos = ?`;
+  
+  db.query(selectQuery, [id], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo CV:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0 || !results[0].Documentos) {
+      return res.status(404).json({ error: 'CV no encontrado' });
+    }
+    
+    const cvPath = results[0].Documentos;
+    
+    // Eliminar referencia de la base de datos
+    const updateQuery = `UPDATE candidatos SET Documentos = NULL WHERE idCandidatos = ?`;
+    
+    db.query(updateQuery, [id], (err, result) => {
+      if (err) {
+        console.error('Error eliminando referencia del CV:', err);
+        return res.status(500).json({ error: 'Error eliminando CV' });
+      }
+      
+      // Eliminar archivo físico
+      const fullPath = path.join(__dirname, '..', cvPath.replace('/', ''));
+      fs.unlink(fullPath, (fsErr) => {
+        if (fsErr) {
+          console.error('Error eliminando archivo físico:', fsErr);
+        }
+        
+        res.json({ message: 'CV eliminado exitosamente' });
+      });
+    });
+  });
 });
 
 // Middleware de manejo de errores para multer
@@ -1106,6 +1281,103 @@ app.use((error, req, res, next) => {
   }
   
   next(error);
+});
+app.post('/api/register/empleado', async (req, res) => {
+  const { nombre, email, password } = req.body;
+  console.log('🔹 Registro empleado recibido:', req.body);
+
+  if (!nombre || !email || !password) {
+    console.log('❌ Faltan campos obligatorios');
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  }
+
+  try {
+    const checkQuery = 'SELECT * FROM candidatos WHERE Correo_Candidatos = ?';
+    db.query(checkQuery, [email], async (err, results) => {
+      if (err) {
+        console.error('❌ Error verificando email existente:', err);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+
+      if (results.length > 0) {
+        console.log('❌ Email ya registrado');
+        return res.status(400).json({ error: 'Email ya registrado' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      console.log('✅ Contraseña hasheada');
+
+      const insertQuery = `
+        INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, Tipo_Usuario, password)
+        VALUES (?, ?, 'empleado', ?)
+      `;
+
+      db.query(insertQuery, [nombre, email, hashedPassword], (err2, result) => {
+        if (err2) {
+          console.error('❌ Error creando empleado en DB:', err2);
+          return res.status(500).json({ error: 'Error creando cuenta' });
+        }
+
+        console.log('✅ Empleado creado, ID:', result.insertId);
+        const user = { id: result.insertId, nombre, email, tipo: 'empleado' };
+        const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+
+        res.json({ success: true, user, token });
+      });
+    });
+  } catch (error) {
+    console.error('❌ Catch general:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
+});
+
+// Registro empresa
+app.post('/api/register/empresa', async (req, res) => {
+  const { nombre, email, password } = req.body;
+  console.log('🔹 Registro empresa recibido:', req.body);
+
+  if (!nombre || !email || !password) {
+    console.log('❌ Faltan campos obligatorios');
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  }
+
+  try {
+    const checkQuery = 'SELECT * FROM empresa WHERE Correo_Empresa = ?';
+    db.query(checkQuery, [email], async (err, results) => {
+      if (err) {
+        console.error('❌ Error verificando email empresa existente:', err);
+        return res.status(500).json({ error: 'Error interno del servidor' });
+      }
+
+      if (results.length > 0) {
+        console.log('❌ Email empresa ya registrado');
+        return res.status(400).json({ error: 'Email ya registrado' });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      console.log('✅ Contraseña empresa hasheada');
+
+      const insertQuery = `
+        INSERT INTO empresa (Nombre_Empresa, Correo_Empresa, Tipo_Usuario, password)
+        VALUES (?, ?, 'empresa', ?)
+      `;
+      db.query(insertQuery, [nombre, email, hashedPassword], (err2, result) => {
+        if (err2) {
+          console.error('❌ Error creando empresa en DB:', err2);
+          return res.status(500).json({ error: 'Error creando cuenta' });
+        }
+
+        console.log('✅ Empresa creada, ID:', result.insertId);
+        const user = { id: result.insertId, nombre, email, tipo: 'empresa' };
+        const token = jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+
+        res.json({ success: true, user, token });
+      });
+    });
+  } catch (error) {
+    console.error('❌ Catch general empresa:', error);
+    res.status(500).json({ error: 'Error del servidor' });
+  }
 });
 
 app.listen(PORT, () => {

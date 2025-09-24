@@ -3,6 +3,28 @@ import api from '../services/api';
 
 const AuthContext = createContext({});
 
+export const register = async (email, password, tipoUsuario, nombre) => {
+  try {
+    const res = await fetch('http://localhost:3001/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, tipoUsuario, nombre })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      localStorage.setItem('token', data.token);
+      return { success: true, user: data.user };
+    } else {
+      return { success: false, error: data.error || 'Error desconocido' };
+    }
+  } catch (error) {
+    console.error('Error en register:', error);
+    return { success: false, error: 'Error conectando al servidor' };
+  }
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
