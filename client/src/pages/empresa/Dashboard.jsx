@@ -14,6 +14,8 @@ const EmpresaDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [selectedAplicacion, setSelectedAplicacion] = useState(null);
+  const [vacanteEditando, setVacanteEditando] = useState(null);
+
   const [filters, setFilters] = useState({
     estado: '',
     puesto: '',
@@ -576,7 +578,13 @@ const EmpresaDashboard = () => {
                       >
                         Ver Candidatos
                       </button>
-                      <button className="btn-outline">Editar</button>
+                     <button 
+                       className="btn-outline"
+                       onClick={() => setVacanteEditando(vacante)}
+                       >
+                       Editar
+                       </button>
+
                     </div>
                   </div>
                 ))}
@@ -589,9 +597,75 @@ const EmpresaDashboard = () => {
             )}
           </div>
         )}
+         {/* ✅ Formulario para editar vacante */}
+    {vacanteEditando && (
+      <div className="edit-form-container">
+        <form 
+          onSubmit={async (e) => {
+            e.preventDefault();
+            try {
+              await api.put(`/empresa/vacante/${vacanteEditando.idPuestos}`, {
+                tipo_puesto: vacanteEditando.Tipo_Puesto,
+                salario: vacanteEditando.Salario,
+                horario: vacanteEditando.Horario,
+                ubicacion: vacanteEditando.Ubicacion
+              });
+              alert('✅ Vacante actualizada');
+              setVacanteEditando(null);
+              fetchVacantes();
+            } catch (error) {
+              console.error('Error actualizando vacante:', error);
+              alert('❌ Error al actualizar la vacante');
+            }
+          }}
+          className="edit-form"
+        >
+          <h3>Editar Vacante</h3>
+          <div className="form-grid">
+            <input
+              type="text"
+              value={vacanteEditando.Tipo_Puesto}
+              onChange={(e) => setVacanteEditando({...vacanteEditando, Tipo_Puesto: e.target.value})}
+              required
+            />
+            <input
+              type="number"
+              value={vacanteEditando.Salario}
+              onChange={(e) => setVacanteEditando({...vacanteEditando, Salario: e.target.value})}
+              required
+            />
+            <input
+              type="text"
+              value={vacanteEditando.Horario}
+              onChange={(e) => setVacanteEditando({...vacanteEditando, Horario: e.target.value})}
+              required
+            />
+            <input
+              type="text"
+              value={vacanteEditando.Ubicacion}
+              onChange={(e) => setVacanteEditando({...vacanteEditando, Ubicacion: e.target.value})}
+              required
+            />
+          </div>
+          <div className="form-actions">
+            <button type="submit" className="btn-primary">Guardar Cambios</button>
+            <button 
+              type="button" 
+              className="btn-secondary"
+              onClick={() => setVacanteEditando(null)}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    )}
       </main>
     </div>
+    
   );
+  
+
 };
 
 export default EmpresaDashboard;
