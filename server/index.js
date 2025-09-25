@@ -1295,46 +1295,33 @@ app.post('/api/register/empleado', async (req, res) => {
   }
 
   try {
-    // Verificar si el email ya existe
-    const checkQuery = 'SELECT * FROM candidatos WHERE Correo_Candidatos = ?';
-    db.query(checkQuery, [email], async (err, results) => {
+    // Hashear la contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('✅ Contraseña hasheada');
+
+    // Insertar nuevo candidato correctamente
+    const insertQuery = `
+      INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, password, Tipo_Usuario)
+      VALUES (?, ?, ?, ?)
+    `;
+
+    db.query(insertQuery, [nombre, email, '123456', 'empleado'], (err, result) => {
       if (err) {
-        console.error('❌ Error verificando email existente:', err);
-        return res.status(500).json({ error: 'Error interno del servidor' });
+        console.error('❌ Error creando empleado en DB:', err);
+        return res.status(500).json({ error: 'Error creando cuenta' });
       }
 
-      if (results.length > 0) {
-        console.log('❌ Email ya registrado');
-        return res.status(400).json({ error: 'Email ya registrado' });
-      }
-
-      // Hashear la contraseña
-      const hashedPassword = await bcrypt.hash(password, 10);
-      console.log('✅ Contraseña hasheada');
-
-      // Insertar nuevo candidato
-      const insertQuery = `
-       INSERT INTO candidatos (Nombre_Candidatos, Correo_Candidatos, password, Tipo_Usuario)
-  VALUES (?, ?, ?, ?)`
-    [nombre, email, '123456' , 'empleado'];
-
-      db.query(insertQuery, [nombre, email], (err2, result) => {
-        if (err2) {
-          console.error('❌ Error creando empleado en DB:', err2);
-          return res.status(500).json({ error: 'Error creando cuenta' });
-        }
-
-        console.log('✅ Empleado creado, ID:', result.insertId);
-        res.json({ 
-          success: true, 
-          message: 'Cuenta creada exitosamente',
-          user: { id: result.insertId, nombre, email, tipo: 'empleado' }
-        });
+      console.log('✅ Empleado creado, ID:', result.insertId);
+      res.json({ 
+        success: true, 
+        message: 'Cuenta creada exitosamente',
+        user: { id: result.insertId, nombre, email, tipo: 'empleado' }
       });
     });
-  } catch (error) {
-    console.error('❌ Catch general:', error);
-    res.status(500).json({ error: 'Error del servidor' });
+
+  } catch (err) {
+    console.error('❌ Error en el registro:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
 
@@ -1369,7 +1356,7 @@ app.post('/api/register/empresa', async (req, res) => {
       // Insertar nueva empresa
       const insertQuery = `
         INSERT INTO empresa (Nombre_Empresa, Correo_Empresa, password, Tipo_Usuario)
-VALUES (?, ?, ?, 'empresa')
+VALUES (?, ?, 'Juan' , 'empresa')
 
       `;
       
