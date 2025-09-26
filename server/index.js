@@ -94,32 +94,95 @@ if (!process.env.JWT_SECRET) {
   console.log('💡 En producción, configura JWT_SECRET como variable de entorno');
 }
 
-// Carpeta para almacenar archivos
+// Configuración de Multer para diferentes tipos de archivos
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads'); // Carpeta principal, dentro puedes separar fotos y CVs
+    const fileType = req.body.fileType || 'documents';
+    let uploadPath;
+    
+    switch (fileType) {
+      case 'profile':
+        uploadPath = path.join(__dirname, '..', 'Fotos'); // Carpeta Fotos
+        break;
+      case 'cv':
+        uploadPath = path.join(__dirname, '..', 'PDF'); // Carpeta PDF
+        break;
+      default:
+        uploadPath = path.join(__dirname, '..', 'PDF'); // Por defecto en PDF
+    }
+    
+    cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = path.extname(file.originalname);
+    const name = file.originalname.replace(ext, '').replace(/[^a-zA-Z0-9]/g, '_');
+    cb(null, `${req.user.id}_${name}_${uniqueSuffix}${ext}`);
   }
 });
 
-// Filtro de archivos según tipo
-const fileFilter = (tipo) => (req, file, cb) => {
-  const allowedTypes = {
-    foto: /jpeg|jpg|png/,
-    cv: /pdf/
-  };
-  if (!allowedTypes[tipo].test(file.mimetype)) {
-    return cb(new Error('Tipo de archivo no permitido'), false);
+// Filtros de archivos por tipo
+const fileFilter = (req, file, cb) => {
+  const fileType = req.body.fileType || 'documents';
+  
+  if (fileType === 'profile') {
+    // Solo imágenes para fotos de perfil
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
+    }
+  } else if (fileType === 'cv') {
+    // PDFs y documentos de Word para CVs
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos PDF, DOC o DOCX para CVs'), false);
+    }
+  } else {
+    // Documentos generales - más flexible
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'image/jpeg',
+      'image/png',
+      'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de archivo no permitido'), false);
+    }
   }
-  cb(null, true);
 };
 
-// Middlewares para fotos y CVs
-const uploadFoto = multer({ storage, fileFilter: fileFilter('foto'), limits: { fileSize: 5 * 1024 * 1024 } });
-const uploadCV = multer({ storage, fileFilter: fileFilter('cv'), limits: { fileSize: 10 * 1024 * 1024 } });
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB límite
+  }
+});
+
+// Middleware de autenticación
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Token requerido' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido' });
+    }
+    req.user = user;
+    next();
+  });
+};
 
 // Middleware de autorización por rol
 const requireRole = (role) => {
@@ -1103,58 +1166,134 @@ app.post('/api/empleado/favorito/toggle', authenticateToken, requireRole('emplea
   });
 });
 
-// Subir foto de candidato
-app.post('/api/candidatos/:id/foto', uploadFoto.single('foto'), (req, res) => {
-  const id = req.params.id;
-  const fotoPath = req.file.path; // Ruta guardada en el disco
+// ========================================
+// RUTAS DE ARCHIVOS
+// ========================================
 
-  db.query("UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?", [fotoPath, id], (err, result) => {
-    if (err) return res.status(500).send('Error guardando foto');
-    res.send('Foto subida correctamente');
-  });
+// Subir archivo
+app.post('/api/upload', authenticateToken, upload.single('file'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se ha subido ningún archivo' });
+    }
+
+    const fileInfo = {
+      id: Date.now().toString(),
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      fileType: req.body.fileType || 'documents',
+      userId: req.user.id,
+      uploadDate: new Date().toISOString(),
+      url: req.body.fileType === 'profile' ? `/Fotos/${req.file.filename}` : `/PDF/${req.file.filename}`
+    };
+
+    // Usar la variable global de conectividad
+
+
+    res.json({
+      message: 'Archivo subido exitosamente',
+      file: fileInfo
+    });
+  } catch (error) {
+    console.error('Error subiendo archivo:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
 });
 
-// Subir CV de candidato
-app.post('/api/candidatos/:id/cv', uploadCV.single('cv'), (req, res) => {
-  const id = req.params.id;
-  const cvPath = req.file.path;
+// Subir CV (solo para empleados)
+app.post('/api/upload-cv', authenticateToken, requireRole('empleado'), upload.single('cv'), (req, res) => {
+  const { id } = req.params;
+  
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se ha subido ningún CV' });
+  }
 
-  db.query("UPDATE candidatos SET cv = ? WHERE idCandidatos = ?", [cvPath, id], (err, result) => {
-    if (err) return res.status(500).send('Error guardando CV');
-    res.send('CV subido correctamente');
-  });
-});
+  const cvPath = `/PDF/${req.file.filename}`;
 
-
-// Ver foto de candidato
-app.get('/api/candidatos/:id/foto', (req, res) => {
-  const id = req.params.id;
-  db.query("SELECT foto_perfil FROM candidatos WHERE idCandidatos = ?", [id], (err, result) => {
-    if (err) return res.status(500).send("Error obteniendo foto");
-    if (!result[0] || !result[0].foto_perfil) return res.status(404).send("Foto no encontrada");
-
-    const fotoPath = path.join(__dirname, result[0].foto_perfil);
-    res.sendFile(fotoPath, (err) => {
-      if (err) res.status(500).send("Error enviando foto");
+  // Actualizar la ruta del CV en la base de datos
+  const updateQuery = `UPDATE candidatos SET Documentos = ? WHERE idCandidatos = ?`;
+  
+  db.query(updateQuery, [cvPath, req.user.id], (err, result) => {
+    if (err) {
+      console.error('Error actualizando ruta del CV:', err);
+      return res.status(500).json({ error: 'Error guardando CV' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Candidato no encontrado' });
+    }
+    
+    res.json({ 
+      message: 'CV subido exitosamente',
+      Documentos: cvPath,
+      file: {
+        originalName: req.file.originalname,
+        filename: req.file.filename,
+        size: req.file.size
+      }
     });
   });
 });
 
-// Descargar CV de candidato
-app.get('/api/candidatos/:id/cv', (req, res) => {
-  const id = req.params.id;
-  db.query("SELECT cv FROM candidatos WHERE idCandidatos = ?", [id], (err, result) => {
-    if (err) return res.status(500).send("Error obteniendo CV");
-    if (!result[0] || !result[0].cv) return res.status(404).send("CV no encontrado");
+// Obtener archivos del usuario (simple)
+app.get('/api/files/:userId', authenticateToken, (req, res) => {
+  const { userId } = req.params;
+  
+  // Verificar que el usuario solo puede ver sus propios archivos
+  if (req.user.id !== parseInt(userId)) {
+    return res.status(403).json({ error: 'Solo puedes ver tus propios archivos' });
+  }
 
-    const cvPath = path.join(__dirname, result[0].cv);
-    res.download(cvPath, (err) => {
-      if (err) res.status(500).send("Error descargando CV");
-    });
+  // Obtener información básica del candidato incluyendo archivos
+  const query = `
+    SELECT foto_perfil, Documentos 
+    FROM candidatos 
+    WHERE idCandidatos = ?
+  `;
+  
+  db.query(query, [userId], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo archivos:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0) {
+      return res.json({ foto_perfil: null, Documentos: null });
+    }
+    
+    res.json(results[0]);
   });
 });
 
+// Descargar CV del candidato
+app.get('/api/candidato/:candidatoId/cv', authenticateToken, (req, res) => {
+  const { candidatoId } = req.params;
 
+  // Obtener la ruta del CV
+  const query = `SELECT Documentos FROM candidatos WHERE idCandidatos = ?`;
+  
+  db.query(query, [candidatoId], (err, results) => {
+    if (err) {
+      console.error('Error obteniendo CV:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+    
+    if (results.length === 0 || !results[0].Documentos) {
+      return res.status(404).json({ error: 'CV no encontrado' });
+    }
+    
+    const cvPath = results[0].Documentos;
+    const fullPath = path.join(__dirname, '..', cvPath.replace('/', ''));
+    
+    // Verificar si el archivo existe
+    if (!fs.existsSync(fullPath)) {
+      return res.status(404).json({ error: 'Archivo CV no encontrado' });
+    }
+    
+    res.sendFile(fullPath);
+  });
+});
 
 // Eliminar CV del candidato
 app.delete('/api/empleado/cv/:id', authenticateToken, requireRole('empleado'), (req, res) => {

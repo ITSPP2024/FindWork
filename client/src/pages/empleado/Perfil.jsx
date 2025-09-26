@@ -49,22 +49,8 @@ const EmpleadoPerfil = () => {
           <div className="perfil-card">
             <div className="perfil-header">
               <div className="perfil-avatar">
-  {perfil?.foto_perfil ? (
-    <img
-      src={`http://localhost:3001/api/candidatos/${user.id}/foto`}
-      alt="Foto de perfil"
-      style={{
-        width: '80px',
-        height: '80px',
-        borderRadius: '50%',
-        objectFit: 'cover'
-      }}
-    />
-  ) : (
-    <span>{perfil?.nombre?.charAt(0) || 'U'}</span>
-  )}
-</div>
-
+                {perfil?.nombre?.charAt(0) || 'U'}
+              </div>
               <div className="perfil-info">
                 <h3>{perfil?.nombre || 'Usuario'}</h3>
                 <p>{perfil?.correo || user?.email}</p>
