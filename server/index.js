@@ -596,6 +596,7 @@ app.delete('/api/vacantes/:id', (req, res) => {
 });
 
 
+
 // === RUTAS PARA EMPRESAS ===
 
 // Obtener perfil de empresa
