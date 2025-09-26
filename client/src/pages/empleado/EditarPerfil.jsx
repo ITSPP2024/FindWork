@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/EditarPerfil.css';
 import api from '../../services/api';
+import axios from 'axios';
 
 const EditarPerfil = () => {
   const { user } = useAuth();
@@ -27,46 +28,35 @@ const EditarPerfil = () => {
     }
   }, [user]);
 
-  // =================== CARGAR PERFIL ===================
   const cargarPerfil = async () => {
     try {
       const response = await api.get(`/empleado/perfil/${user.id}`);
       const data = response.data;
-
-      // Asignar datos al estado
+      
       setPerfil({
         nombre: data.nombre || '',
         descripcion: data.descripcion || '',
         telefono: data.telefono || '',
         experiencia: data.experiencia || '',
-        foto_perfil: data.foto_perfil || null
+        foto_perfil: data.foto_perfil
       });
-
-      // Previsualizar foto (si viene en base64 o URL)
       if (data.foto_perfil) {
-        // Detectar si ya es base64
-        if (data.foto_perfil.startsWith('data:image/')) {
-          setPreviewFoto(data.foto_perfil);
-        } else {
-          // Si es ruta desde backend
-          setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
-        }
+        setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
       }
     } catch (error) {
-    console.error('Error cargando perfil:', error.response || error);
-    setMensaje('❌ Error cargando el perfil');
-}
- finally {
+      console.error('Error cargando perfil:', error);
+      setMensaje('Error cargando el perfil');
+    } finally {
       setLoading(false);
     }
   };
 
-  // =================== CARGAR ARCHIVOS ===================
   const cargarArchivos = async () => {
     try {
       const response = await api.get(`/files/${user.id}`);
       const data = response.data;
-
+      
+      // Convertir el formato simple a array para compatibilidad
       const archivosArray = [];
       if (data.Documentos) {
         archivosArray.push({
@@ -78,17 +68,20 @@ const EditarPerfil = () => {
           tipo: 'cv'
         });
       }
+      
       setArchivos(archivosArray);
     } catch (error) {
       console.error('Error cargando archivos:', error);
-      setArchivos([]);
+      setArchivos([]); // Asegurar que siempre sea un array
     }
   };
 
-  // =================== MANEJO FORMULARIO ===================
   const manejarCambio = (e) => {
     const { name, value } = e.target;
-    setPerfil(prev => ({ ...prev, [name]: value }));
+    setPerfil(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const guardarPerfil = async (e) => {
@@ -97,7 +90,7 @@ const EditarPerfil = () => {
     setMensaje('');
 
     try {
-      await api.put(`/empleado/perfil/${user.id}`, {
+      const response = await api.put(`/empleado/perfil/${user.id}`, {
         nombre: perfil.nombre,
         descripcion: perfil.descripcion,
         telefono: perfil.telefono,
@@ -106,69 +99,78 @@ const EditarPerfil = () => {
 
       setMensaje('✅ Perfil actualizado exitosamente');
       setTimeout(() => setMensaje(''), 3000);
-
-      await cargarPerfil(); // Recargar datos actualizados
+      
+      // Recargar el perfil para mostrar los datos actualizados
+      await cargarPerfil();
     } catch (error) {
       console.error('Error guardando perfil:', error);
       const errorMessage = error.response?.data?.error || 'Error al guardar el perfil';
-      setMensaje(`❌ ${errorMessage}`);
+      setMensaje(`❌ Error: ${errorMessage}`);
     } finally {
       setGuardando(false);
     }
   };
 
-  // =================== MANEJO FOTO DE PERFIL ===================
   const manejarCambioFoto = async (e) => {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+  const archivo = e.target.files[0];
+  if (!archivo) return;
 
-    // Validaciones
-    if (!archivo.type.startsWith('image/')) {
-      setMensaje('❌ Por favor selecciona una imagen válida');
-      return;
-    }
-    if (archivo.size > 5 * 1024 * 1024) {
-      setMensaje('❌ La imagen no puede ser mayor a 5MB');
-      return;
-    }
+  // Validar que sea imagen
+  if (!archivo.type.startsWith("image/")) {
+    setMensaje("❌ Por favor selecciona una imagen válida");
+    return;
+  }
 
-    setSubiendoFoto(true);
-    setMensaje('');
+  // Validar tamaño (máximo 5MB)
+  if (archivo.size > 5 * 1024 * 1024) {
+    setMensaje("❌ La imagen no puede ser mayor a 5MB");
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append('foto', archivo);
-    formData.append('fileType', 'profile');
+  setSubiendoFoto(true);
+  setMensaje("");
 
-    try {
-      const response = await api.put(
-        `/empleado/foto-perfil/${user.id}`,
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
-      );
+  const formData = new FormData();
+  formData.append("foto", archivo); // 👈 nombre debe coincidir con multer.single("foto")
+  formData.append("fileType", "profile");
 
-      const data = response.data;
-      if (data.foto_perfil) {
-        // Guardar y previsualizar directamente desde base64
-        setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
-        setPreviewFoto(data.foto_perfil);
+  try {
+    const response = await api.put(
+      `/empleado/foto-perfil/${user.id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data", // 👈 FORZAMOS multipart
+        },
       }
+    );
 
-      setMensaje('✅ Foto de perfil actualizada exitosamente');
-      setTimeout(() => setMensaje(''), 3000);
-    } catch (error) {
-      console.error('Error subiendo foto:', error);
-      const errorMessage = error.response?.data?.error || 'Error al subir la foto';
-      setMensaje(`❌ ${errorMessage}`);
-    } finally {
-      setSubiendoFoto(false);
+    const data = response.data;
+    // ✅ Si guardas la foto en base64 en la DB
+    if (data.foto_perfil) {
+      setPreviewFoto(data.foto_perfil);
+      setPerfil((prev) => ({ ...prev, foto_perfil: data.foto_perfil }));
     }
-  };
 
-  // =================== SUBIR DOCUMENTO ===================
+    setMensaje("✅ Foto de perfil actualizada exitosamente");
+    setTimeout(() => setMensaje(""), 3000);
+  } catch (error) {
+    console.error("Error subiendo foto:", error);
+    const errorMessage =
+      error.response?.data?.error || "Error al subir la foto";
+    setMensaje(`❌ ${errorMessage}`);
+  } finally {
+    setSubiendoFoto(false);
+  }
+};
+
+
+
   const subirDocumento = async (e) => {
     const archivo = e.target.files[0];
     if (!archivo) return;
 
+    // Verificar que sea un PDF
     if (archivo.type !== 'application/pdf') {
       setMensaje('❌ Solo se permiten archivos PDF');
       return;
@@ -181,9 +183,9 @@ const EditarPerfil = () => {
     try {
       await api.post('/upload', formData);
       setMensaje('✅ Documento subido exitosamente');
-      cargarArchivos();
+      cargarArchivos(); // Recargar lista de archivos
       setTimeout(() => setMensaje(''), 3000);
-      e.target.value = '';
+      e.target.value = ''; // Limpiar input
     } catch (error) {
       console.error('Error subiendo documento:', error);
       const errorMessage = error.response?.data?.error || 'Error al subir el documento';
@@ -191,14 +193,13 @@ const EditarPerfil = () => {
     }
   };
 
-  // =================== ELIMINAR ARCHIVO ===================
   const eliminarArchivo = async (archivoId) => {
     if (!confirm('¿Estás seguro de que quieres eliminar este archivo?')) return;
 
     try {
       await api.delete(`/files/${archivoId}`);
       setMensaje('✅ Archivo eliminado exitosamente');
-      cargarArchivos();
+      cargarArchivos(); // Recargar lista de archivos
       setTimeout(() => setMensaje(''), 3000);
     } catch (error) {
       console.error('Error eliminando archivo:', error);
@@ -207,7 +208,9 @@ const EditarPerfil = () => {
     }
   };
 
-  if (loading) return <div className="loading">Cargando perfil...</div>;
+  if (loading) {
+    return <div className="loading">Cargando perfil...</div>;
+  }
 
   return (
     <div className="editar-perfil">
@@ -223,24 +226,24 @@ const EditarPerfil = () => {
       )}
 
       <div className="perfil-container">
-        {/* FOTO DE PERFIL */}
+        {/* Sección de Foto de Perfil */}
         <div className="seccion-foto">
           <h3>📸 Foto de Perfil</h3>
           <div className="foto-perfil-wrapper">
             <div className="foto-actual">
-              {previewFoto ? (
-                <img
-                  src={previewFoto}
-                  alt="Foto de perfil"
-                  className="foto-perfil-preview"
-                />
-              ) : (
-                <div className="sin-foto">
-                  <span>📷</span>
-                  <p>Sin foto</p>
-                </div>
-              )}
-            </div>
+  {previewFoto ? (
+    <img
+      src={previewFoto}
+      alt="Foto de perfil"
+      className="foto-perfil-preview"
+    />
+  ) : (
+    <div className="sin-foto">
+      <span>📷</span>
+      <p>Sin foto</p>
+    </div>
+  )}
+</div>
             <div className="cambiar-foto">
               <input
                 type="file"
@@ -258,7 +261,7 @@ const EditarPerfil = () => {
           </div>
         </div>
 
-        {/* FORMULARIO INFORMACIÓN */}
+        {/* Formulario de Información Personal */}
         <div className="seccion-informacion">
           <h3>👤 Información Personal</h3>
           <form onSubmit={guardarPerfil} className="formulario-perfil">
@@ -317,9 +320,10 @@ const EditarPerfil = () => {
           </form>
         </div>
 
-        {/* DOCUMENTOS */}
+        {/* Sección de Documentos */}
         <div className="seccion-documentos">
           <h3>📄 Mis Documentos</h3>
+          
           <div className="subir-documento">
             <input
               type="file"
