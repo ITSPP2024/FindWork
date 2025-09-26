@@ -565,14 +565,21 @@ app.delete('/api/vacantes/:id', (req, res) => {
 
   // Primero eliminar en favoritos
   const deleteFavoritos = `DELETE FROM favoritos WHERE puesto_id = ?`;
+  console.log("💾 [SQL QUERY]:", deleteFavoritos);
+  console.log("📋 [SQL PARAMS]:", [id]);
+
   db.query(deleteFavoritos, [id], (err1) => {
     if (err1) {
       console.error("❌ [SQL ERROR] Borrando favoritos:", err1);
       return res.status(500).json({ error: "Error borrando favoritos" });
     }
     console.log("✅ Favoritos eliminados");
-     // Luego eliminar en aplicaciones
+
+    // Luego eliminar en aplicaciones
     const deleteAplicaciones = `DELETE FROM aplicaciones WHERE puesto_id = ?`;
+    console.log("💾 [SQL QUERY]:", deleteAplicaciones);
+    console.log("📋 [SQL PARAMS]:", [id]);
+
     db.query(deleteAplicaciones, [id], (err2) => {
       if (err2) {
         console.error("❌ [SQL ERROR] Borrando aplicaciones:", err2);
@@ -582,17 +589,21 @@ app.delete('/api/vacantes/:id', (req, res) => {
 
       // Finalmente eliminar la vacante
       const deletePuesto = `DELETE FROM puestos WHERE idPuestos = ?`;
+      console.log("💾 [SQL QUERY]:", deletePuesto);
+      console.log("📋 [SQL PARAMS]:", [id]);
+
       db.query(deletePuesto, [id], (err3, result) => {
         if (err3) {
           console.error("❌ [SQL ERROR] Borrando puesto:", err3);
-          return res.status(500).json({ error: "Error borrando puesto" });
+          return res.status(500).json({ error: "Error borrando puesto", details: err3 });
         }
-        console.log("✅ Vacante eliminada correctamente");
+        console.log("✅ Vacante eliminada correctamente, filas afectadas:", result.affectedRows);
         res.json({ success: true, message: "Vacante eliminada correctamente" });
       });
     });
   });
 });
+
 
 
 // === RUTAS PARA EMPRESAS ===
