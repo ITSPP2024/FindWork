@@ -599,67 +599,114 @@ const EmpresaDashboard = () => {
         )}
          {/* ✅ Formulario para editar vacante */}
     {vacanteEditando && (
-      <div className="edit-form-container">
-        <form 
-          onSubmit={async (e) => {
-            e.preventDefault();
-            try {
-              await api.put(`/empresa/vacante/${vacanteEditando.idPuestos}`, {
-                tipo_puesto: vacanteEditando.Tipo_Puesto,
-                salario: vacanteEditando.Salario,
-                horario: vacanteEditando.Horario,
-                ubicacion: vacanteEditando.Ubicacion
-              });
-              alert('✅ Vacante actualizada');
-              setVacanteEditando(null);
-              fetchVacantes();
-            } catch (error) {
-              console.error('Error actualizando vacante:', error);
-              alert('❌ Error al actualizar la vacante');
-            }
-          }}
-          className="edit-form"
-        >
-          <h3>Editar Vacante</h3>
-          <div className="form-grid">
-            <input
-              type="text"
-              value={vacanteEditando.Tipo_Puesto}
-              onChange={(e) => setVacanteEditando({...vacanteEditando, Tipo_Puesto: e.target.value})}
-              required
-            />
-            <input
-              type="number"
-              value={vacanteEditando.Salario}
-              onChange={(e) => setVacanteEditando({...vacanteEditando, Salario: e.target.value})}
-              required
-            />
-            <input
-              type="text"
-              value={vacanteEditando.Horario}
-              onChange={(e) => setVacanteEditando({...vacanteEditando, Horario: e.target.value})}
-              required
-            />
-            <input
-              type="text"
-              value={vacanteEditando.Ubicacion}
-              onChange={(e) => setVacanteEditando({...vacanteEditando, Ubicacion: e.target.value})}
-              required
-            />
-          </div>
-          <div className="form-actions">
-            <button type="submit" className="btn-primary">Guardar Cambios</button>
-            <button 
-              type="button" 
-              className="btn-secondary"
-              onClick={() => setVacanteEditando(null)}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      </div>
-    )}
+  <div className="modal-overlay" onClick={() => setVacanteEditando(null)}>
+    <div 
+      className="modal-content" 
+      onClick={(e) => e.stopPropagation()} // evita cerrar al hacer click dentro
+    >
+      <h2>✏️ Editar Vacante</h2>
+
+      <form 
+        onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            console.log("📤 Enviando actualización:", vacanteEditando);
+            const response = await api.put(`/empresa/vacante/${vacanteEditando.idPuestos}`, {
+              Tipo_Puesto: vacanteEditando.Tipo_Puesto,
+              Salario: vacanteEditando.Salario,
+              Horario: vacanteEditando.Horario,
+              Ubicacion: vacanteEditando.Ubicacion
+            });
+            console.log("✅ [FRONT SUCCESS]:", response.data);
+            alert("✅ Vacante actualizada correctamente");
+            fetchVacantes();
+            setVacanteEditando(null);
+          } catch (error) {
+            console.error("❌ [FRONT ERROR]:", error.response?.data || error.message);
+            alert("❌ Error al actualizar vacante");
+          }
+        }}
+        className="form-vacante"
+      >
+        <div className="form-group">
+          <label>Tipo de Puesto</label>
+          <input
+            type="text"
+            value={vacanteEditando.Tipo_Puesto}
+            onChange={(e) => setVacanteEditando({ ...vacanteEditando, Tipo_Puesto: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Salario</label>
+          <input
+            type="number"
+            value={vacanteEditando.Salario}
+            onChange={(e) => setVacanteEditando({ ...vacanteEditando, Salario: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Horario</label>
+          <input
+            type="text"
+            value={vacanteEditando.Horario}
+            onChange={(e) => setVacanteEditando({ ...vacanteEditando, Horario: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Ubicación</label>
+          <input
+            type="text"
+            value={vacanteEditando.Ubicacion}
+            onChange={(e) => setVacanteEditando({ ...vacanteEditando, Ubicacion: e.target.value })}
+            required
+          />
+        </div>
+
+        <div className="form-actions">
+          <button type="submit" className="btn-primary">💾 Guardar cambios</button>
+
+          <button 
+            type="button" 
+            className="btn-danger"
+            onClick={async () => {
+              if (window.confirm("⚠️ ¿Seguro que quieres eliminar esta vacante?")) {
+                try {
+                  console.log("📤 Eliminando vacante:", vacanteEditando.idPuestos);
+                  const response = await api.delete(`/empresa/vacante/${vacanteEditando.idPuestos}`);
+                  console.log("✅ [FRONT SUCCESS]:", response.data);
+                  alert("🗑️ Vacante eliminada correctamente");
+                  fetchVacantes();
+                  setVacanteEditando(null);
+                } catch (error) {
+                  console.error("❌ [FRONT ERROR]:", error.response?.data || error.message);
+                  alert("❌ Error eliminando vacante");
+                }
+              }
+            }}
+          >
+            🗑️ Eliminar
+          </button>
+
+          <button 
+            type="button" 
+            className="btn-secondary"
+            onClick={() => setVacanteEditando(null)}
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+
       </main>
     </div>
     

@@ -530,6 +530,56 @@ app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) 
     res.json(results);
   });
 });
+// 📌 Editar vacante
+app.put('/api/empresa/vacante/:id', authenticateToken, requireRole('empresa'), (req, res) => {
+  const { id } = req.params;
+  const { Tipo_Puesto, Salario, Horario, Ubicacion } = req.body;
+
+  console.log("📥 [PUT VACANTE] Datos recibidos:", { id, Tipo_Puesto, Salario, Horario, Ubicacion });
+
+  const updateQuery = `
+    UPDATE puestos
+    SET Tipo_Puesto = ?, Salario = ?, Horario = ?, Ubicacion = ?
+    WHERE idPuestos = ?
+  `;
+  const params = [Tipo_Puesto, Salario, Horario, Ubicacion, id];
+
+  console.log("💾 [SQL QUERY]:", updateQuery);
+  console.log("📋 [SQL PARAMS]:", params);
+
+  db.query(updateQuery, params, (err, result) => {
+    if (err) {
+      console.error("❌ [SQL ERROR]:", err);
+      return res.status(500).json({ error: "Error actualizando vacante" });
+    }
+
+    console.log("✅ [SQL SUCCESS]: Vacante actualizada:", result);
+    res.json({ success: true, message: "Vacante actualizada correctamente" });
+  });
+});
+
+// 📌 Eliminar vacante
+app.delete('/api/empresa/vacante/:id', authenticateToken, requireRole('empresa'), (req, res) => {
+  const { id } = req.params;
+
+  console.log("📥 [DELETE VACANTE] ID recibido:", id);
+
+  const deleteQuery = "DELETE FROM puestos WHERE idPuestos = ?";
+  const params = [id];
+
+  console.log("💾 [SQL QUERY]:", deleteQuery);
+  console.log("📋 [SQL PARAMS]:", params);
+
+  db.query(deleteQuery, params, (err, result) => {
+    if (err) {
+      console.error("❌ [SQL ERROR]:", err);
+      return res.status(500).json({ error: "Error eliminando vacante" });
+    }
+
+    console.log("✅ [SQL SUCCESS]: Vacante eliminada:", result);
+    res.json({ success: true, message: "Vacante eliminada correctamente" });
+  });
+});
 
 // === RUTAS PARA EMPRESAS ===
 
