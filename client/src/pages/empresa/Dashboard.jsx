@@ -678,7 +678,7 @@ const EmpresaDashboard = () => {
               if (window.confirm("⚠️ ¿Seguro que quieres eliminar esta vacante?")) {
                 try {
                   console.log("📤 Eliminando vacante:", vacanteEditando.idPuestos);
-                  const response = await api.delete(`/empresa/vacante/${vacanteEditando.idPuestos}`);
+                  const response = await api.delete(`/vacantes/${vacanteEditando.idPuestos}`);
                   console.log("✅ [FRONT SUCCESS]:", response.data);
                   alert("🗑️ Vacante eliminada correctamente");
                   fetchVacantes();

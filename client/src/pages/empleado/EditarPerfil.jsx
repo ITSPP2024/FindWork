@@ -214,15 +214,21 @@ const EditarPerfil = () => {
           <h3>📸 Foto de Perfil</h3>
           <div className="foto-perfil-wrapper">
             <div className="foto-actual">
-              {previewFoto ? (
-                <img src={previewFoto} alt="Foto de perfil" className="foto-perfil-preview" />
-              ) : (
-                <div className="sin-foto">
-                  <span>📷</span>
-                  <p>Sin foto</p>
-                </div>
-              )}
-            </div>
+  {previewFoto ? (
+    <img 
+      src={previewFoto} 
+      alt="Foto de perfil" 
+      className="foto-perfil-preview" 
+      style={{ borderRadius: '50%', objectFit: 'cover', width: '120px', height: '120px' }}
+    />
+  ) : (
+    <div className="sin-foto">
+      <span>📷</span>
+      <p>Sin foto</p>
+    </div>
+  )}
+</div>
+
             <div className="cambiar-foto">
               <input
                 type="file"
@@ -332,13 +338,14 @@ const EditarPerfil = () => {
                   </div>
                   <div className="documento-acciones">
                     <a 
-                      href={`/api/files/${archivo.id}/download`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-descargar"
-                    >
-                      📥 Descargar
-                    </a>
+  href={`/api/candidatos/${user.id}/documento`} 
+  target="_blank" 
+  rel="noopener noreferrer"
+  className="btn-descargar"
+>
+  📥 Descargar
+</a>
+
                     <button 
                       onClick={() => eliminarArchivo(archivo.id)}
                       className="btn-eliminar"
