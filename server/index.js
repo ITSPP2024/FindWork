@@ -1,3 +1,8 @@
+import express from 'express';
+import path from "path";
+import cors from 'cors';
+import mysql from 'mysql2/promise';
+import multer from 'multer';
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -10,7 +15,11 @@ const emailService = require('./utils/emailService');
 require('dotenv').config();
 
 const app = express();
+app.use(cors());
+app.use(express.json({ limit: '10mb' })); // Para recibir base64 grande
 const PORT = process.env.PORT || 3001;
+app.use("/Fotos", express.static(path.join(process.cwd(), "Fotos")));
+
 
 // Middlewares
 // Configurar CORS de forma segura
@@ -95,69 +104,7 @@ if (!process.env.JWT_SECRET) {
 }
 
 // Configuración de Multer para diferentes tipos de archivos
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const fileType = req.body.fileType || 'documents';
-    let uploadPath;
-    
-    switch (fileType) {
-      case 'profile':
-        uploadPath = path.join(__dirname, '..', 'Fotos'); // Carpeta Fotos
-        break;
-      case 'cv':
-        uploadPath = path.join(__dirname, '..', 'PDF'); // Carpeta PDF
-        break;
-      default:
-        uploadPath = path.join(__dirname, '..', 'PDF'); // Por defecto en PDF
-    }
-    
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const name = file.originalname.replace(ext, '').replace(/[^a-zA-Z0-9]/g, '_');
-    cb(null, `${req.user.id}_${name}_${uniqueSuffix}${ext}`);
-  }
-});
-
-// Filtros de archivos por tipo
-const fileFilter = (req, file, cb) => {
-  const fileType = req.body.fileType || 'documents';
-  
-  if (fileType === 'profile') {
-    // Solo imágenes para fotos de perfil
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
-    }
-  } else if (fileType === 'cv') {
-    // PDFs y documentos de Word para CVs
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Solo se permiten archivos PDF, DOC o DOCX para CVs'), false);
-    }
-  } else {
-    // Documentos generales - más flexible
-    const allowedTypes = [
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'image/jpeg',
-      'image/png',
-      'text/plain'
-    ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Tipo de archivo no permitido'), false);
-    }
-  }
-};
-
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
@@ -422,94 +369,75 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 });
 
 // Actualizar foto de perfil del empleado
-app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), (req, res) => {
-  console.log('🔍 [FOTO EMPLEADO] Iniciando subida de foto para empleado ID:', req.params.id);
-  console.log('🔍 [FOTO EMPLEADO] Usuario autenticado:', req.user);
-  
+app.put('/empleado/foto-perfil/:id', upload.single('foto'), async (req, res) => {
   const { id } = req.params;
+  if (!req.file) return res.status(400).json({ error: 'No se subió ninguna foto' });
   
-  // Verificar que el usuario solo puede actualizar su propia foto
-  if (req.user.id !== parseInt(id)) {
-    console.log('❌ [FOTO EMPLEADO] Error de permisos. Usuario:', req.user.id, 'intentando actualizar ID:', id);
-    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
+  const fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+  
+  try {
+    await db.query('UPDATE empleados SET foto_perfil=? WHERE id=?', [fotoBase64, id]);
+    res.json({ foto_perfil: fotoBase64 });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error subiendo foto' });
   }
-
-  // Configurar multer específicamente para fotos de perfil
-  const profileUpload = multer({
-    storage: multer.diskStorage({
-      destination: function (req, file, cb) {
-        const destPath = path.join(__dirname, '..', 'Fotos');
-        console.log('📁 [FOTO EMPLEADO] Destino de archivo:', destPath);
-        cb(null, destPath);
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        const filename = `${req.user.id}_profile_${uniqueSuffix}${ext}`;
-        console.log('📝 [FOTO EMPLEADO] Nombre del archivo generado:', filename);
-        cb(null, filename);
-      }
-    }),
-    fileFilter: (req, file, cb) => {
-      console.log('🔍 [FOTO EMPLEADO] Verificando tipo de archivo:', file.mimetype);
-      if (file.mimetype.startsWith('image/')) {
-        console.log('✅ [FOTO EMPLEADO] Tipo de archivo válido');
-        cb(null, true);
-      } else {
-        console.log('❌ [FOTO EMPLEADO] Tipo de archivo inválido:', file.mimetype);
-        cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
-      }
-    },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
-  }).single('foto');
-
-  console.log('📤 [FOTO EMPLEADO] Procesando upload con multer...');
-  profileUpload(req, res, function (err) {
-    if (err) {
-      console.error('❌ [FOTO EMPLEADO] Error en multer:', err.message);
-      return res.status(400).json({ error: err.message });
-    }
-
-    console.log('🔍 [FOTO EMPLEADO] Archivo recibido:', req.file ? req.file.filename : 'NINGUNO');
-    if (!req.file) {
-      console.error('❌ [FOTO EMPLEADO] NO SE RECIBIÓ ARCHIVO - req.file es undefined/null');
-      console.log('📋 [FOTO EMPLEADO] Headers recibidos:', req.headers);
-      console.log('📋 [FOTO EMPLEADO] Body recibido:', req.body);
-      return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
-    }
-
-    const fotoPath = `/Fotos/${req.file.filename}`;
-    console.log('💾 [FOTO EMPLEADO] Ruta para guardar en DB:', fotoPath);
-
-    // Verificar si estamos conectados a la base de datos
-    console.log('🔗 [FOTO EMPLEADO] Intentando guardar en base de datos...');
-    const updateQuery = `UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?`;
-    console.log('📝 [FOTO EMPLEADO] Query SQL:', updateQuery);
-    console.log('📋 [FOTO EMPLEADO] Parámetros:', [fotoPath, id]);
-    
-    db.query(updateQuery, [fotoPath, id], (err, result) => {
-      if (err) {
-        console.error('❌ [FOTO EMPLEADO] Error en base de datos:', err);
-        console.error('❌ [FOTO EMPLEADO] Error completo:', JSON.stringify(err, null, 2));
-        return res.status(500).json({ error: 'Error actualizando foto de perfil: ' + err.message });
-      }
-      
-      console.log('📊 [FOTO EMPLEADO] Resultado de la query:', result);
-      console.log('📊 [FOTO EMPLEADO] Filas afectadas:', result.affectedRows);
-      
-      if (result.affectedRows === 0) {
-        console.error('❌ [FOTO EMPLEADO] No se encontró el candidato con ID:', id);
-        return res.status(404).json({ error: 'Perfil no encontrado' });
-      }
-      
-      console.log('✅ [FOTO EMPLEADO] Foto actualizada exitosamente!');
-      res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
-      });
-    });
-  });
 });
+
+// Subir documento PDF
+app.post('/upload', upload.single('file'), async (req, res) => {
+  const { fileType } = req.body;
+  const { userId } = req.body; // Asegúrate de enviar el id del empleado desde frontend
+  if (!req.file) return res.status(400).json({ error: 'No se subió ningún archivo' });
+  
+  const docBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+  
+  try {
+    await db.query('UPDATE empleados SET Documentos=? WHERE id=?', [docBase64, userId]);
+    res.json({ message: 'Documento subido' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error subiendo documento' });
+  }
+});
+
+// Obtener documento
+app.get('/files/:id/download', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const [rows] = await db.query('SELECT Documentos FROM empleados WHERE id=?', [id]);
+    if (rows.length === 0 || !rows[0].Documentos) return res.status(404).json({ error: 'Documento no encontrado' });
+    
+    const file = rows[0].Documentos;
+    const matches = file.match(/^data:(.+);base64,(.+)$/);
+    if (!matches) return res.status(500).json({ error: 'Formato inválido' });
+
+    const mimeType = matches[1];
+    const fileBuffer = Buffer.from(matches[2], 'base64');
+
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename=archivo.pdf`);
+    res.send(fileBuffer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error descargando documento' });
+  }
+});
+
+// Eliminar documento
+app.delete('/files/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await db.query('UPDATE empleados SET Documentos=NULL WHERE id=?', [id]);
+    res.json({ message: 'Documento eliminado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Error eliminando documento' });
+  }
+});
+
+// ----------------- INICIO DEL SERVIDOR -----------------
+app.listen(3001, () => console.log('Servidor corriendo en http://localhost:3001'));
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {

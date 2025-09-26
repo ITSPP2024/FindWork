@@ -111,43 +111,58 @@ const EditarPerfil = () => {
   };
 
   const manejarCambioFoto = async (e) => {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+  const archivo = e.target.files[0];
+  if (!archivo) return;
 
-    // Verificar que sea una imagen
-    if (!archivo.type.startsWith('image/')) {
-      setMensaje('❌ Por favor selecciona una imagen válida');
-      return;
+  // Validar que sea imagen
+  if (!archivo.type.startsWith("image/")) {
+    setMensaje("❌ Por favor selecciona una imagen válida");
+    return;
+  }
+
+  // Validar tamaño (máximo 5MB)
+  if (archivo.size > 5 * 1024 * 1024) {
+    setMensaje("❌ La imagen no puede ser mayor a 5MB");
+    return;
+  }
+
+  setSubiendoFoto(true);
+  setMensaje("");
+
+  const formData = new FormData();
+  formData.append("foto", archivo); // 👈 nombre debe coincidir con multer.single("foto")
+  formData.append("fileType", "profile");
+
+  try {
+    const response = await api.put(
+      `/empleado/foto-perfil/${user.id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data", // 👈 FORZAMOS multipart
+        },
+      }
+    );
+
+    const data = response.data;
+    // ✅ Si guardas la foto en base64 en la DB
+    if (data.foto_perfil) {
+      setPreviewFoto(data.foto_perfil);
+      setPerfil((prev) => ({ ...prev, foto_perfil: data.foto_perfil }));
     }
 
-    // Verificar tamaño (máximo 5MB)
-    if (archivo.size > 5 * 1024 * 1024) {
-      setMensaje('❌ La imagen no puede ser mayor a 5MB');
-      return;
-    }
+    setMensaje("✅ Foto de perfil actualizada exitosamente");
+    setTimeout(() => setMensaje(""), 3000);
+  } catch (error) {
+    console.error("Error subiendo foto:", error);
+    const errorMessage =
+      error.response?.data?.error || "Error al subir la foto";
+    setMensaje(`❌ ${errorMessage}`);
+  } finally {
+    setSubiendoFoto(false);
+  }
+};
 
-    setSubiendoFoto(true);
-    setMensaje('');
-
-    const formData = new FormData();
-    formData.append('foto', archivo);
-    formData.append('fileType', 'profile');
-
-    try {
-      const response = await api.put(`/empleado/foto-perfil/${user.id}`, formData);
-      const data = response.data;
-      setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
-      setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
-      setMensaje('✅ Foto de perfil actualizada exitosamente');
-      setTimeout(() => setMensaje(''), 3000);
-    } catch (error) {
-      console.error('Error subiendo foto:', error);
-      const errorMessage = error.response?.data?.error || 'Error al subir la foto';
-      setMensaje(`❌ ${errorMessage}`);
-    } finally {
-      setSubiendoFoto(false);
-    }
-  };
 
   const subirDocumento = async (e) => {
     const archivo = e.target.files[0];
@@ -214,15 +229,19 @@ const EditarPerfil = () => {
           <h3>📸 Foto de Perfil</h3>
           <div className="foto-perfil-wrapper">
             <div className="foto-actual">
-              {previewFoto ? (
-                <img src={previewFoto} alt="Foto de perfil" className="foto-perfil-preview" />
-              ) : (
-                <div className="sin-foto">
-                  <span>📷</span>
-                  <p>Sin foto</p>
-                </div>
-              )}
-            </div>
+  {previewFoto ? (
+    <img
+      src={previewFoto}
+      alt="Foto de perfil"
+      className="foto-perfil-preview"
+    />
+  ) : (
+    <div className="sin-foto">
+      <span>📷</span>
+      <p>Sin foto</p>
+    </div>
+  )}
+</div>
             <div className="cambiar-foto">
               <input
                 type="file"
