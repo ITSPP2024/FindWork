@@ -180,6 +180,28 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
+.aplicacion-actions {
+  display: flex;
+  justify-content: flex-end; /* manda el botón a la derecha */
+  margin-top: 10px;
+}
+
+.cancel-btn {
+  background-color: #e74c3c; /* rojo */
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.cancel-btn:hover {
+  background-color: #c0392b; /* rojo más oscuro al pasar el mouse */
+}
+
 
 /* Responsive Design */
 @media (max-width: 768px) {
@@ -208,4 +230,5 @@
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
   }
+  
 }

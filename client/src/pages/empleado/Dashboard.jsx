@@ -57,6 +57,23 @@ const EmpleadoDashboard = () => {
       console.error('Error cargando aplicaciones:', error);
     }
   };
+// 👇 Agregar esta función en tu componente
+const handleCancelApplication = async (idAplicacion) => {
+  if (!window.confirm("¿Seguro que deseas cancelar esta aplicación?")) return;
+
+  try {
+    const result = await applicationsAPI.deleteApplication(idAplicacion);
+    if (result.success) {
+      alert("Aplicación cancelada correctamente ❌");
+      fetchMisAplicaciones(); // refrescar lista
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (error) {
+    console.error("Error cancelando aplicación:", error);
+    alert("Ocurrió un error al cancelar la aplicación");
+  }
+};
 
   const fetchFavoritos = async () => {
     if (!user?.id) return;
@@ -370,6 +387,15 @@ const EmpleadoDashboard = () => {
                           <p>{aplicacion.carta_presentacion}</p>
                         </div>
                       )}
+                      <div className="aplicacion-actions">
+                       <button 
+                       className="cancel-btn"
+                       onClick={() => handleCancelApplication(aplicacion.idAplicacion)}
+                       >
+                      Cancelar Aplicación
+                      </button>
+                      </div>
+
                     </div>
                   ))}
                 </div>
