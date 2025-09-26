@@ -571,8 +571,7 @@ app.delete('/api/vacantes/:id', (req, res) => {
       return res.status(500).json({ error: "Error borrando favoritos" });
     }
     console.log("✅ Favoritos eliminados");
-
-    // Luego eliminar en aplicaciones
+     // Luego eliminar en aplicaciones
     const deleteAplicaciones = `DELETE FROM aplicaciones WHERE puesto_id = ?`;
     db.query(deleteAplicaciones, [id], (err2) => {
       if (err2) {
@@ -594,8 +593,6 @@ app.delete('/api/vacantes/:id', (req, res) => {
     });
   });
 });
-
-
 
 
 // === RUTAS PARA EMPRESAS ===
