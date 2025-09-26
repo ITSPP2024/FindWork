@@ -1,8 +1,3 @@
-import express from 'express';
-import path from "path";
-import cors from 'cors';
-import mysql from 'mysql2/promise';
-import multer from 'multer';
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -102,6 +97,14 @@ if (!process.env.JWT_SECRET) {
   console.log('⚠️  Usando JWT_SECRET por defecto para desarrollo');
   console.log('💡 En producción, configura JWT_SECRET como variable de entorno');
 }
+// Filtrar solo imágenes
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true); // aceptar archivo
+  } else {
+    cb(new Error('Solo se permiten imágenes'), false); // rechazar archivo
+  }
+};
 
 // Configuración de Multer para diferentes tipos de archivos
 const storage = multer.memoryStorage();
@@ -369,20 +372,27 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
 });
 
 // Actualizar foto de perfil del empleado
-app.put('/empleado/foto-perfil/:id', upload.single('foto'), async (req, res) => {
+app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), upload.single('foto'), async (req, res) => {
   const { id } = req.params;
-  if (!req.file) return res.status(400).json({ error: 'No se subió ninguna foto' });
-  
-  const fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-  
-  try {
-    await db.query('UPDATE empleados SET foto_perfil=? WHERE id=?', [fotoBase64, id]);
-    res.json({ foto_perfil: fotoBase64 });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error subiendo foto' });
+
+  if (req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
   }
+
+  if (!req.file) return res.status(400).json({ error: 'No se subió ninguna foto' });
+
+  const fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+
+  const query = 'UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?';
+  db.query(query, [fotoBase64, id], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: 'Error subiendo foto' });
+    }
+    res.json({ foto_perfil: fotoBase64 });
+  });
 });
+
 
 // Subir documento PDF
 app.post('/upload', upload.single('file'), async (req, res) => {
@@ -393,7 +403,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   const docBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
   
   try {
-    await db.query('UPDATE empleados SET Documentos=? WHERE id=?', [docBase64, userId]);
+    await db.query('UPDATE candidatos SET Documentos=? WHERE id=?', [docBase64, userId]);
     res.json({ message: 'Documento subido' });
   } catch (err) {
     console.error(err);
@@ -405,7 +415,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 app.get('/files/:id/download', async (req, res) => {
   const { id } = req.params;
   try {
-    const [rows] = await db.query('SELECT Documentos FROM empleados WHERE id=?', [id]);
+    const [rows] = await db.query('SELECT Documentos FROM candidatos WHERE id=?', [id]);
     if (rows.length === 0 || !rows[0].Documentos) return res.status(404).json({ error: 'Documento no encontrado' });
     
     const file = rows[0].Documentos;
@@ -428,16 +438,13 @@ app.get('/files/:id/download', async (req, res) => {
 app.delete('/files/:id', async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('UPDATE empleados SET Documentos=NULL WHERE id=?', [id]);
+    await db.query('UPDATE candidatos SET Documentos=NULL WHERE id=?', [id]);
     res.json({ message: 'Documento eliminado' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error eliminando documento' });
   }
 });
-
-// ----------------- INICIO DEL SERVIDOR -----------------
-app.listen(3001, () => console.log('Servidor corriendo en http://localhost:3001'));
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {
