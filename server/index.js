@@ -559,27 +559,42 @@ app.put('/api/empresa/vacante/:id', authenticateToken, requireRole('empresa'), (
 });
 
 // 📌 Eliminar vacante
-app.delete('/api/empresa/vacante/:id', authenticateToken, requireRole('empresa'), (req, res) => {
-  const { id } = req.params;
-
+app.delete('/api/vacantes/:id', (req, res) => {
+  const id = req.params.id;
   console.log("📥 [DELETE VACANTE] ID recibido:", id);
 
-  const deleteQuery = "DELETE FROM puestos WHERE idPuestos = ?";
-  const params = [id];
-
-  console.log("💾 [SQL QUERY]:", deleteQuery);
-  console.log("📋 [SQL PARAMS]:", params);
-
-  db.query(deleteQuery, params, (err, result) => {
-    if (err) {
-      console.error("❌ [SQL ERROR]:", err);
-      return res.status(500).json({ error: "Error eliminando vacante" });
+  // Primero eliminar en favoritos
+  const deleteFavoritos = `DELETE FROM favoritos WHERE puesto_id = ?`;
+  db.query(deleteFavoritos, [id], (err1) => {
+    if (err1) {
+      console.error("❌ [SQL ERROR] Borrando favoritos:", err1);
+      return res.status(500).json({ error: "Error borrando favoritos" });
     }
+    console.log("✅ Favoritos eliminados");
 
-    console.log("✅ [SQL SUCCESS]: Vacante eliminada:", result);
-    res.json({ success: true, message: "Vacante eliminada correctamente" });
+    // Luego eliminar en aplicaciones
+    const deleteAplicaciones = `DELETE FROM aplicaciones WHERE puesto_id = ?`;
+    db.query(deleteAplicaciones, [id], (err2) => {
+      if (err2) {
+        console.error("❌ [SQL ERROR] Borrando aplicaciones:", err2);
+        return res.status(500).json({ error: "Error borrando aplicaciones" });
+      }
+      console.log("✅ Aplicaciones eliminadas");
+
+      // Finalmente eliminar la vacante
+      const deletePuesto = `DELETE FROM puestos WHERE idPuestos = ?`;
+      db.query(deletePuesto, [id], (err3, result) => {
+        if (err3) {
+          console.error("❌ [SQL ERROR] Borrando puesto:", err3);
+          return res.status(500).json({ error: "Error borrando puesto" });
+        }
+        console.log("✅ Vacante eliminada correctamente");
+        res.json({ success: true, message: "Vacante eliminada correctamente" });
+      });
+    });
   });
 });
+
 
 // === RUTAS PARA EMPRESAS ===
 
