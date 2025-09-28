@@ -409,33 +409,37 @@ const EmpresaDashboard = () => {
 
               <div className="modal-body">
                 <div className="candidato-profile">
-                  <div className="candidato-avatar">
-  {aplicacion.candidato_foto ? (
-    <img
-      src={`http://localhost:3001${aplicacion.candidato_foto}`}
-      alt={aplicacion.candidato_nombre}
-      style={{
-        width: "40px",
-        height: "40px",
-        borderRadius: "50%",
-        objectFit: "cover"
-      }}
-    />
-  ) : (
-    <span>{aplicacion.candidato_nombre?.charAt(0) || 'U'}</span>
-  )}
+  <div className="candidato-avatar large">
+    {selectedAplicacion.candidato_foto ? (
+      <img
+        src={`http://localhost:3001${selectedAplicacion.candidato_foto}`}
+        alt={selectedAplicacion.candidato_nombre}
+        style={{
+          width: "100px",
+          height: "100px",
+          borderRadius: "50%",
+          objectFit: "cover"
+        }}
+      />
+    ) : (
+      <span>{selectedAplicacion.candidato_nombre?.charAt(0) || 'U'}</span>
+    )}
+  </div>
+
+  <div className="candidato-info-detail">
+    <h3>{selectedAplicacion.candidato_nombre}</h3>
+    <p>{selectedAplicacion.candidato_email}</p>
+    {selectedAplicacion.candidato_telefono && (
+      <p>📞 {selectedAplicacion.candidato_telefono}</p>
+    )}
+    <p className="puesto-detail">
+      Aplicó para: <strong>{selectedAplicacion.puesto_titulo}</strong>
+    </p>
+  </div>
+
+  {getStatusBadge(selectedAplicacion.estado)}
 </div>
 
-                  <div className="candidato-info-detail">
-                    <h3>{selectedAplicacion.candidato_nombre}</h3>
-                    <p>{selectedAplicacion.candidato_email}</p>
-                    {selectedAplicacion.candidato_telefono && (
-                      <p>📞 {selectedAplicacion.candidato_telefono}</p>
-                    )}
-                    <p className="puesto-detail">Aplicó para: <strong>{selectedAplicacion.puesto_titulo}</strong></p>
-                  </div>
-                  {getStatusBadge(selectedAplicacion.estado)}
-                </div>
 
                 <div className="aplicacion-full-details">
                   <div className="detail-section">
