@@ -304,8 +304,22 @@ const EmpresaDashboard = () => {
                     <div className="aplicacion-header">
                       <div className="candidato-info">
                         <div className="candidato-avatar">
-                          {aplicacion.candidato_nombre?.charAt(0) || 'U'}
-                        </div>
+  {aplicacion.candidato_foto ? (
+    <img
+      src={`http://localhost:3001${aplicacion.candidato_foto}`}
+      alt={aplicacion.candidato_nombre}
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "50%",
+        objectFit: "cover"
+      }}
+    />
+  ) : (
+    <span>{aplicacion.candidato_nombre?.charAt(0) || 'U'}</span>
+  )}
+</div>
+
                         <div className="candidato-details">
                           <h3>{aplicacion.candidato_nombre}</h3>
                           <p>{aplicacion.candidato_email}</p>
@@ -395,9 +409,23 @@ const EmpresaDashboard = () => {
 
               <div className="modal-body">
                 <div className="candidato-profile">
-                  <div className="candidato-avatar large">
-                    {selectedAplicacion.candidato_nombre?.charAt(0) || 'U'}
-                  </div>
+                  <div className="candidato-avatar">
+  {aplicacion.candidato_foto ? (
+    <img
+      src={`http://localhost:3001${aplicacion.candidato_foto}`}
+      alt={aplicacion.candidato_nombre}
+      style={{
+        width: "40px",
+        height: "40px",
+        borderRadius: "50%",
+        objectFit: "cover"
+      }}
+    />
+  ) : (
+    <span>{aplicacion.candidato_nombre?.charAt(0) || 'U'}</span>
+  )}
+</div>
+
                   <div className="candidato-info-detail">
                     <h3>{selectedAplicacion.candidato_nombre}</h3>
                     <p>{selectedAplicacion.candidato_email}</p>

@@ -801,6 +801,7 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
       c.Nombre_Candidatos as candidato_nombre,
       c.Correo_Candidatos as candidato_email,
       c.Numero_Candidatos as candidato_telefono,
+      c.foto_perfil AS candidato_foto,  -- 👈 IMPORTANTE
       p.Tipo_Puesto as puesto_titulo,
       p.Salario,
       p.Ubicacion
