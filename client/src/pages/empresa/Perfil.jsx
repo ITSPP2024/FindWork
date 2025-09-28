@@ -48,8 +48,11 @@ const EmpresaPerfil = () => {
           <div className="perfil-card">
             <div className="perfil-header">
               <div className="perfil-avatar empresa-avatar">
-                {perfil?.nombre?.charAt(0) || 'E'}
-              </div>
+<img
+  src={`http://localhost:3001${perfil.foto_perfil}`}
+  alt="Foto de perfil"
+  style={{ width: "120px", height: "120px", borderRadius: "50%" }}
+/>              </div>
               <div className="perfil-info">
                 <h3>{perfil?.nombre || 'Empresa'}</h3>
                 <p>{perfil?.correo || user?.email}</p>

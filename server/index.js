@@ -12,8 +12,6 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 const PORT = process.env.PORT || 3001;
-app.use("/Fotos", express.static(path.join(process.cwd(), "Fotos")));
-
 
 // Middlewares
 // Configurar CORS de forma segura
@@ -373,7 +371,7 @@ app.put(
   }
 );
 app.put(
-  "/api/ëmpresa/foto-perfil/:id",
+  "/api/empresa/foto-perfil/:id",
   authenticateToken,
   requireRole("empresa"),
   upload.single("foto"), // 👈 debe coincidir con frontend (formData.append("foto", archivo))
@@ -557,68 +555,6 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
   });
 });
 
-// Actualizar foto de perfil de empresa
-app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'), (req, res) => {
-  const { id } = req.params;
-  
-  // Verificar que la empresa solo puede actualizar su propia foto
-  if (req.user.id !== parseInt(id)) {
-    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
-  }
-
-  const profileUpload = multer({
-    storage: multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '..', 'Fotos'));
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, `empresa_${req.user.id}_profile_${uniqueSuffix}${ext}`);
-      }
-    }),
-    fileFilter: (req, file, cb) => {
-      if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
-      } else {
-        cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
-      }
-    },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
-  }).single('foto');
-
-  profileUpload(req, res, function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
-    }
-
-    const fotoPath = `/Fotos/${req.file.filename}`;
-
-    // Usar la variable global de conectividad
-
-
-    const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
-    
-    db.query(updateQuery, [fotoPath, id], (err, result) => {
-      if (err) {
-        console.error('Error actualizando foto de perfil empresa:', err);
-        return res.status(500).json({ error: 'Error actualizando foto de perfil' });
-      }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Empresa no encontrada' });
-      }
-      
-      res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
-      });
-    });
-  });
-});
 
 // Crear vacante
 app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req, res) => {
@@ -650,7 +586,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
   }
   
   
-  const query = 'SELECT * FROM puestos WHERE empresa_id = ? ORDER BY idPuestos DESC';
+const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
   
   db.query(query, (err, results) => {
     if (err) {

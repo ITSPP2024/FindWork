@@ -99,43 +99,55 @@ const EditarPerfilEmpresa = () => {
   };
 
   const manejarCambioFoto = async (e) => {
-    const archivo = e.target.files[0];
-    if (!archivo) return;
+  const archivo = e.target.files[0];
+  if (!archivo) return;
 
-    // Verificar que sea una imagen
-    if (!archivo.type.startsWith('image/')) {
-      setMensaje('❌ Por favor selecciona una imagen válida');
-      return;
-    }
+  if (!archivo.type.startsWith("image/")) {
+    setMensaje("❌ Por favor selecciona una imagen válida");
+    return;
+  }
 
-    // Verificar tamaño (máximo 5MB)
-    if (archivo.size > 5 * 1024 * 1024) {
-      setMensaje('❌ La imagen no puede ser mayor a 5MB');
-      return;
-    }
+  if (archivo.size > 5 * 1024 * 1024) {
+    setMensaje("❌ La imagen no puede ser mayor a 5MB");
+    return;
+  }
 
-    setSubiendoFoto(true);
-    setMensaje('');
+  setSubiendoFoto(true);
+  setMensaje("");
 
-    const formData = new FormData();
-    formData.append('foto', archivo);
-    formData.append('fileType', 'profile');
+  const formData = new FormData();
+  formData.append("foto", archivo);
+  formData.append("fileType", "profile");
 
-    try {
-      const response = await api.put(`/empresa/foto-perfil/${user.id}`, formData);
-      const data = response.data;
+  try {
+    const response = await api.put(
+      `/empresa/foto-perfil/${user.id}`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data", // 👈 OBLIGATORIO
+        },
+      }
+    );
+
+    const data = response.data;
+    if (data.foto_perfil) {
       setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
-      setPerfil(prev => ({ ...prev, foto_perfil: data.foto_perfil }));
-      setMensaje('✅ Foto de perfil actualizada exitosamente');
-      setTimeout(() => setMensaje(''), 3000);
-    } catch (error) {
-      console.error('Error subiendo foto:', error);
-      const errorMessage = error.response?.data?.error || 'Error al subir la foto';
-      setMensaje(`❌ ${errorMessage}`);
-    } finally {
-      setSubiendoFoto(false);
+      setPerfil((prev) => ({ ...prev, foto_perfil: data.foto_perfil }));
     }
-  };
+
+    setMensaje("✅ Foto de perfil actualizada exitosamente");
+    setTimeout(() => setMensaje(""), 3000);
+  } catch (error) {
+    console.error("Error subiendo foto:", error);
+    const errorMessage =
+      error.response?.data?.error || "Error al subir la foto";
+    setMensaje(`❌ ${errorMessage}`);
+  } finally {
+    setSubiendoFoto(false);
+  }
+};
+
 
   const subirDocumento = async (e) => {
     const archivo = e.target.files[0];
@@ -203,7 +215,11 @@ const EditarPerfilEmpresa = () => {
           <div className="foto-perfil-wrapper">
             <div className="foto-actual">
               {previewFoto ? (
-                <img src={previewFoto} alt="Logo de empresa" className="foto-perfil-preview" />
+                <img
+  src={`http://localhost:3001${perfil.foto_perfil}`}
+  alt="Foto de perfil"
+  style={{ width: "150px", height: "150px", borderRadius: "50%" }}
+/>
               ) : (
                 <div className="sin-foto">
                   <span>🏢</span>
