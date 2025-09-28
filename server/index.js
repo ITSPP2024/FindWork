@@ -11,7 +11,6 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Para recibir base64 grande
 const PORT = process.env.PORT || 3001;
 app.use("/Fotos", express.static(path.join(process.cwd(), "Fotos")));
 
@@ -27,14 +26,6 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
-
-// Nota: Middleware de archivos se configurará después de definir authenticateToken
-
-// Nota: Archivos protegidos por autenticación - no serving estático público
-
-// Crear directorios Fotos y PDF si no existen
-fs.ensureDirSync(path.join(__dirname, '..', 'Fotos'));
-fs.ensureDirSync(path.join(__dirname, '..', 'PDF'));
 
 // Configuración de conexión a MySQL
 const db = mysql.createConnection({
@@ -106,16 +97,22 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const uploadDir = path.join(
+  "C:/Users/Joshua/Downloads/Trabajos/Base de datos/FindWork/uploads/fotos"
+);
 // Configuración de Multer para diferentes tipos de archivos
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB límite
-  }
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // nombre único
+  },
 });
+const upload = multer({ storage });
 
+// 🔹 Servir la carpeta de fotos estáticamente
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Middleware de autenticación
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -143,23 +140,6 @@ const requireRole = (role) => {
     next();
   };
 };
-
-
-// Servir archivos estáticos de forma segura (después de definir authenticateToken)
-app.use('/uploads', authenticateToken, (req, res, next) => {
-  // Solo permitir acceso a archivos del usuario autenticado
-  const filePath = req.path;
-  const userId = req.user.id;
-  
-  // Verificar que el archivo pertenece al usuario con patrón estricto
-  const userFilePattern = new RegExp(`^/(profiles|cvs|documents)/(empresa_)?${userId}_`);
-  if (userFilePattern.test(filePath)) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Acceso denegado al archivo' });
-  }
-}, express.static(path.join(__dirname, 'uploads')));
-
 // === RUTAS DE AUTENTICACIÓN ===
 
 // Login con selección manual de tipo de usuario
@@ -371,80 +351,49 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
   });
 });
 
-// Actualizar foto de perfil del empleado
-app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), upload.single('foto'), async (req, res) => {
-  const { id } = req.params;
-
-  if (req.user.id !== parseInt(id)) {
-    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
-  }
-
-  if (!req.file) return res.status(400).json({ error: 'No se subió ninguna foto' });
-
-  const fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-
-  const query = 'UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?';
-  db.query(query, [fotoBase64, id], (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Error subiendo foto' });
+app.put(
+  "/api/empleado/foto-perfil/:id",
+  authenticateToken,
+  requireRole("empleado"),
+  upload.single("foto"), // 👈 debe coincidir con frontend (formData.append("foto", archivo))
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No se subió ninguna imagen" });
     }
-    res.json({ foto_perfil: fotoBase64 });
-  });
-});
 
+    const id = req.params.id;
+    const relativePath = `/uploads/fotos/${req.file.filename}`; // ruta accesible desde frontend
 
-// Subir documento PDF
-app.post('/upload', upload.single('file'), async (req, res) => {
-  const { fileType } = req.body;
-  const { userId } = req.body; // Asegúrate de enviar el id del empleado desde frontend
-  if (!req.file) return res.status(400).json({ error: 'No se subió ningún archivo' });
-  
-  const docBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-  
-  try {
-    await db.query('UPDATE candidatos SET Documentos=? WHERE id=?', [docBase64, userId]);
-    res.json({ message: 'Documento subido' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error subiendo documento' });
+    const query = "UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?";
+    db.query(query, [relativePath, id], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      res.json({ foto_perfil: relativePath });
+    });
   }
-});
+);
+app.put(
+  "/api/ëmpresa/foto-perfil/:id",
+  authenticateToken,
+  requireRole("empresa"),
+  upload.single("foto"), // 👈 debe coincidir con frontend (formData.append("foto", archivo))
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No se subió ninguna imagen" });
+    }
 
-// Obtener documento
-app.get('/files/:id/download', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [rows] = await db.query('SELECT Documentos FROM candidatos WHERE id=?', [id]);
-    if (rows.length === 0 || !rows[0].Documentos) return res.status(404).json({ error: 'Documento no encontrado' });
-    
-    const file = rows[0].Documentos;
-    const matches = file.match(/^data:(.+);base64,(.+)$/);
-    if (!matches) return res.status(500).json({ error: 'Formato inválido' });
+    const id = req.params.id;
+    const relativePath = `/uploads/fotos/${req.file.filename}`; // ruta accesible desde frontend
 
-    const mimeType = matches[1];
-    const fileBuffer = Buffer.from(matches[2], 'base64');
+    const query = "UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?";
+    db.query(query, [relativePath, id], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
 
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename=archivo.pdf`);
-    res.send(fileBuffer);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error descargando documento' });
+      res.json({ foto_perfil: relativePath });
+    });
   }
-});
+);
 
-// Eliminar documento
-app.delete('/files/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await db.query('UPDATE candidatos SET Documentos=NULL WHERE id=?', [id]);
-    res.json({ message: 'Documento eliminado' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error eliminando documento' });
-  }
-});
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {
@@ -617,7 +566,6 @@ app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'
     return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
   }
 
-  // Configurar multer específicamente para fotos de perfil de empresa
   const profileUpload = multer({
     storage: multer.diskStorage({
       destination: function (req, file, cb) {
@@ -702,7 +650,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
   }
   
   
-  const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
+  const query = 'SELECT * FROM puestos WHERE empresa_id = ? ORDER BY idPuestos DESC';
   
   db.query(query, (err, results) => {
     if (err) {

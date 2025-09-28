@@ -48,17 +48,21 @@ const EmpleadoPerfil = () => {
           
           <div className="perfil-card">
             <div className="perfil-header">
-              <div className="perfil-avatar">
-                {perfil?.nombre?.charAt(0) || 'U'}
-              </div>
-              <div className="perfil-info">
-                <h3>{perfil?.nombre || 'Usuario'}</h3>
-                <p>{perfil?.correo || user?.email}</p>
-              </div>
-              <Link to="/empleado/editar-perfil" className="btn-primary">✏️ Editar Perfil</Link>
-            </div>
-
-
+  <div className="perfil-avatar">
+    <img
+      src={`http://localhost:3001${perfil.foto_perfil}`}
+      alt="Foto de perfil"
+      style={{ width: "120px", height: "120px", borderRadius: "50%" }}
+    />
+  </div>
+  <div className="perfil-info">
+    <h3>{perfil?.nombre || 'Usuario'}</h3>
+    <p>{perfil?.correo || user?.email}</p>
+  </div>
+  <Link to="/empleado/editar-perfil" className="btn-primary">
+    ✏️ Editar Perfil
+  </Link>
+</div>
             <div className="perfil-sections">
               <div className="perfil-section">
                 <h4>Información Personal</h4>

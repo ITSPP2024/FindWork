@@ -146,11 +146,10 @@ const EditarPerfil = () => {
     );
 
     const data = response.data;
-    // ✅ Si guardas la foto en base64 en la DB
-    if (data.foto_perfil) {
-      setPreviewFoto(data.foto_perfil);
-      setPerfil((prev) => ({ ...prev, foto_perfil: data.foto_perfil }));
-    }
+   if (data.foto_perfil) {
+  setPreviewFoto(`http://localhost:3001${data.foto_perfil}`);
+  setPerfil((prev) => ({ ...prev, foto_perfil: data.foto_perfil }));
+}
 
     setMensaje("✅ Foto de perfil actualizada exitosamente");
     setTimeout(() => setMensaje(""), 3000);
@@ -233,10 +232,10 @@ const EditarPerfil = () => {
             <div className="foto-actual">
   {previewFoto ? (
     <img
-      src={previewFoto}
-      alt="Foto de perfil"
-      className="foto-perfil-preview"
-    />
+  src={`http://localhost:3001${perfil.foto_perfil}`}
+  alt="Foto de perfil"
+  style={{ width: "150px", height: "150px", borderRadius: "50%" }}
+/>
   ) : (
     <div className="sin-foto">
       <span>📷</span>
