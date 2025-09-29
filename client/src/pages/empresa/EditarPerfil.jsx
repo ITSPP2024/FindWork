@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Label } from '../../components/ui/label';
+import { Button } from '../../components/ui/button';
 import '../../styles/EditarPerfil.css';
 import api from '../../services/api';
 
@@ -233,8 +237,8 @@ const EditarPerfilEmpresa = () => {
           <h3>🏢 Información de la Empresa</h3>
           <form onSubmit={guardarPerfil} className="formulario-perfil">
             <div className="campo">
-              <label htmlFor="nombre">Nombre de la Empresa:</label>
-              <input
+              <Label htmlFor="nombre">Nombre de la Empresa:</Label>
+              <Input
                 type="text"
                 id="nombre"
                 name="nombre"
@@ -246,8 +250,8 @@ const EditarPerfilEmpresa = () => {
             </div>
 
             <div className="campo">
-              <label htmlFor="telefono">Teléfono de Contacto:</label>
-              <input
+              <Label htmlFor="telefono">Teléfono de Contacto:</Label>
+              <Input
                 type="tel"
                 id="telefono"
                 name="telefono"
@@ -258,8 +262,8 @@ const EditarPerfilEmpresa = () => {
             </div>
 
             <div className="campo">
-              <label htmlFor="ubicacion">Ubicación:</label>
-              <input
+              <Label htmlFor="ubicacion">Ubicación:</Label>
+              <Input
                 type="text"
                 id="ubicacion"
                 name="ubicacion"
@@ -270,8 +274,8 @@ const EditarPerfilEmpresa = () => {
             </div>
 
             <div className="campo">
-              <label htmlFor="descripcion">Descripción de la Empresa:</label>
-              <textarea
+              <Label htmlFor="descripcion">Descripción de la Empresa:</Label>
+              <Textarea
                 id="descripcion"
                 name="descripcion"
                 value={perfil.descripcion}
@@ -281,9 +285,9 @@ const EditarPerfilEmpresa = () => {
               />
             </div>
 
-            <button type="submit" disabled={guardando} className="btn-guardar">
+            <Button type="submit" disabled={guardando} className="btn-guardar">
               {guardando ? '⏳ Guardando...' : '💾 Guardar Cambios'}
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -330,12 +334,14 @@ const EditarPerfilEmpresa = () => {
                     >
                       📥 Descargar
                     </a>
-                    <button 
+                    <Button 
                       onClick={() => eliminarArchivo(archivo.id)}
                       className="btn-eliminar"
+                      variant="destructive"
+                      size="sm"
                     >
                       🗑️ Eliminar
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ))

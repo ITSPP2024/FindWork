@@ -1,11 +1,11 @@
 .dashboard {
   min-height: 100vh;
-  background: #f8fafc;
+  background: hsl(var(--background));
 }
 
 .dashboard-nav {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -21,7 +21,7 @@
 }
 
 .nav-content h1 {
-  color: #4299e1;
+  color: hsl(var(--primary));
   font-size: 1.8rem;
   font-weight: bold;
 }
@@ -33,7 +33,7 @@
 }
 
 .nav-link {
-  color: #4a5568;
+  color: hsl(var(--muted-foreground));
   text-decoration: none;
   font-weight: 500;
   padding: 8px 16px;
@@ -42,21 +42,21 @@
 }
 
 .nav-link:hover {
-  background: #edf2f7;
-  color: #2d3748;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .user-info {
-  color: #2d3748;
+  color: hsl(var(--foreground));
   font-weight: 600;
-  background: #edf2f7;
+  background: hsl(var(--muted));
   padding: 8px 16px;
   border-radius: 6px;
 }
 
 .logout-btn {
-  background: #e53e3e;
-  color: white;
+  background: hsl(var(--destructive));
+  color: hsl(var(--destructive-foreground));
   border: none;
   padding: 8px 16px;
   border-radius: 6px;
@@ -66,7 +66,7 @@
 }
 
 .logout-btn:hover {
-  background: #c53030;
+  background: hsl(var(--destructive) / 0.9);
 }
 
 .dashboard-main {
@@ -83,7 +83,7 @@
 }
 
 .dashboard-header h2 {
-  color: #1a202c;
+  color: hsl(var(--foreground));
   font-size: 2rem;
   font-weight: bold;
 }
@@ -96,20 +96,22 @@
 .search-input {
   width: 100%;
   padding: 12px 16px;
-  border: 2px solid #e2e8f0;
+  border: 2px solid hsl(var(--border));
   border-radius: 8px;
   font-size: 1rem;
   transition: all 0.2s;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .search-input:focus {
   outline: none;
-  border-color: #4299e1;
-  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
 }
 
 .dashboard-content {
-  background: white;
+  background: hsl(var(--card));
   border-radius: 12px;
   padding: 2rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -122,8 +124,8 @@
 }
 
 .vacante-card {
-  background: white;
-  border: 2px solid #e2e8f0;
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--border));
   border-radius: 12px;
   padding: 1.5rem;
   transition: all 0.2s;
@@ -131,7 +133,7 @@
 }
 
 .vacante-card:hover {
-  border-color: #4299e1;
+  border-color: hsl(var(--primary));
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
 }
@@ -141,22 +143,22 @@
 }
 
 .vacante-header h3 {
-  color: #1a202c;
+  color: hsl(var(--foreground));
   font-size: 1.3rem;
   font-weight: bold;
   margin-bottom: 0.5rem;
 }
 
 .empresa {
-  color: #4299e1;
+  color: hsl(var(--primary));
   font-weight: 600;
   font-size: 1rem;
 }
 
 .vacante-id {
-  color: #718096;
+  color: hsl(var(--muted-foreground));
   font-size: 0.9rem;
-  background: #edf2f7;
+  background: hsl(var(--muted));
   padding: 4px 8px;
   border-radius: 4px;
 }
@@ -166,7 +168,7 @@
 }
 
 .vacante-details p {
-  color: #4a5568;
+  color: hsl(var(--muted-foreground));
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
@@ -175,8 +177,8 @@
 
 .apply-btn {
   width: 100%;
-  background: #38a169;
-  color: white;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
   border: none;
   padding: 12px;
   border-radius: 8px;
@@ -186,7 +188,7 @@
 }
 
 .apply-btn:hover {
-  background: #2f855a;
+  background: hsl(var(--primary) / 0.9);
 }
 
 .vacante-actions {

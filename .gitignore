@@ -66,3 +66,9 @@ pids
 
 # Replit specific
 .replit_env
+
+# Trae AI specific files
+.trae/
+
+# Project backup/alternative versions
+project (5)/

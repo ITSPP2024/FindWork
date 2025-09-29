@@ -3,6 +3,8 @@ import api from '../services/api';
 
 const AuthContext = createContext({});
 
+export { AuthContext };
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -35,6 +37,24 @@ export const AuthProvider = ({ children }) => {
     }
     
     setLoading(false);
+  }, []);
+
+  // Efecto para cerrar sesión al recargar la página
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Limpiar la sesión al recargar o cerrar la página
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      delete api.defaults.headers.common['Authorization'];
+    };
+
+    // Agregar el listener para el evento beforeunload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cleanup: remover el listener cuando el componente se desmonte
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []);
 
   const login = async (email, password, tipoUsuario) => {

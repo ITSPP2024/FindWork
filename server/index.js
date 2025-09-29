@@ -12,7 +12,7 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Para recibir base64 grande
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000;
 app.use("/Fotos", express.static(path.join(process.cwd(), "Fotos")));
 
 
@@ -21,7 +21,7 @@ app.use("/Fotos", express.static(path.join(process.cwd(), "Fotos")));
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? process.env.FRONTEND_URL || 'https://your-domain.com'
-    : ['http://localhost:5000', 'http://127.0.0.1:5000'],
+    : ['http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5001', 'http://127.0.0.1:5001'],
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -36,58 +36,100 @@ app.use(express.json());
 fs.ensureDirSync(path.join(__dirname, '..', 'Fotos'));
 fs.ensureDirSync(path.join(__dirname, '..', 'PDF'));
 
-// Configuración de conexión a MySQL
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'admin',
-  database: 'powerman',
-  // Habilitar logs de SQL para debugging
-  debug: false,
-  multipleStatements: true
-});
+// Configuraciones de conexión a MySQL (múltiples opciones)
+const dbConfigs = [
+  {
+    name: 'Configuración original',
+    config: {
+      host: 'localhost',
+      user: 'root',
+      password: 'admin',
+      database: 'powerman',
+      debug: false,
+      multipleStatements: true
+    }
+  },
+  {
+    name: 'Configuración alternativa',
+    config: {
+      host: 'localhost',
+      user: 'root',
+      password: 'Admin',
+      database: 'powerman',
+      debug: false,
+      multipleStatements: true
+    }
+  }
+];
 
-// Interceptar todas las queries para logging
-const originalQuery = db.query;
-db.query = function(sql, params, callback) {
-  // Si solo se pasan 2 argumentos, el segundo es el callback
-  if (typeof params === 'function') {
-    callback = params;
-    params = null;
-  }
-  
-  console.log('💾 [SQL QUERY]:', typeof sql === 'string' ? sql.trim() : sql);
-  if (params) {
-    console.log('📋 [SQL PARAMS]:', params);
-  }
-  
-  return originalQuery.call(this, sql, params, function(err, results, fields) {
-    if (err) {
-      console.error('❌ [SQL ERROR] ==========================================');
-      console.error('❌ [SQL ERROR] Query que falló:', typeof sql === 'string' ? sql.trim() : sql);
-      console.error('❌ [SQL ERROR] Parámetros:', params);
-      console.error('❌ [SQL ERROR] Código de error:', err.code);
-      console.error('❌ [SQL ERROR] Mensaje:', err.sqlMessage || err.message);
-      console.error('❌ [SQL ERROR] Error completo:', err);
-      console.error('❌ [SQL ERROR] ==========================================');
-    } else {
-      console.log('✅ [SQL SUCCESS] Query ejecutada exitosamente');
+let db = null;
+let currentConfigIndex = 0;
+
+// Función para intentar conectar con múltiples configuraciones
+function connectToDatabase() {
+  return new Promise((resolve, reject) => {
+    function tryConnection(configIndex) {
+      if (configIndex >= dbConfigs.length) {
+        reject(new Error('No se pudo conectar con ninguna configuración de base de datos'));
+        return;
+      }
+
+      const currentConfig = dbConfigs[configIndex];
+      console.log(`🔄 Intentando conectar con: ${currentConfig.name}`);
+      
+      const connection = mysql.createConnection(currentConfig.config);
+      
+      connection.connect((err) => {
+        if (err) {
+          console.log(`❌ Falló conexión con ${currentConfig.name}:`, err.message);
+          connection.destroy();
+          tryConnection(configIndex + 1);
+        } else {
+          console.log(`✅ Conectado exitosamente con: ${currentConfig.name}`);
+          db = connection;
+          currentConfigIndex = configIndex;
+          
+          // Interceptar todas las queries para logging
+          const originalQuery = db.query;
+          db.query = function(sql, params, callback) {
+            // Si solo se pasan 2 argumentos, el segundo es el callback
+            if (typeof params === 'function') {
+              callback = params;
+              params = undefined;
+            }
+            
+            return originalQuery.call(this, sql, params, function(err, results, fields) {
+              if (err) {
+                console.error('❌ [SQL ERROR] ==========================================');
+                console.error('❌ [SQL ERROR] Query que falló:', typeof sql === 'string' ? sql.trim() : sql);
+                console.error('❌ [SQL ERROR] Parámetros:', params);
+                console.error('❌ [SQL ERROR] Código de error:', err.code);
+                console.error('❌ [SQL ERROR] Mensaje:', err.sqlMessage || err.message);
+                console.error('❌ [SQL ERROR] Error completo:', err);
+                console.error('❌ [SQL ERROR] ==========================================');
+              } else {
+                console.log('✅ [SQL SUCCESS] Query ejecutada exitosamente');
+              }
+              
+              if (callback) {
+                callback(err, results, fields);
+              }
+            });
+          };
+          
+          resolve(connection);
+        }
+      });
     }
     
-    if (callback) {
-      callback(err, results, fields);
-    }
+    tryConnection(0);
   });
-};
+}
 
-// Conectar a la base de datos
-db.connect((err) => {
-  if (err) {
-    console.error('⚠️  Error conectando a MySQL:', err.message);
-    console.log('💡 La aplicación funcionará con datos simulados.');
-    return;
-  }
-  console.log('✅ Conectado a MySQL database');
+// Inicializar conexión a la base de datos
+connectToDatabase().catch((err) => {
+  console.error('❌ Error conectando a MySQL:', err.message);
+  console.log('⚠️  La aplicación continuará sin base de datos (modo simulación)');
 });
 
 // JWT Secret
@@ -1315,7 +1357,7 @@ app.post('/api/register/empleado', async (req, res) => {
       VALUES (?, ?, ?, ?)
     `;
 
-    db.query(insertQuery, [nombre, email, '123456', 'empleado'], (err, result) => {
+    db.query(insertQuery, [nombre, email, hashedPassword, 'empleado'], (err, result) => {
       if (err) {
         console.error('❌ Error creando empleado en DB:', err);
         return res.status(500).json({ error: 'Error creando cuenta' });
