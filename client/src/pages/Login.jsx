@@ -151,11 +151,11 @@ function Login() {
                     <Input
                       id="email"
                       name="email"
-                      type="email"
-                      placeholder="tu@email.com"
+                      type={formData.tipoUsuario === 'admin' ? 'text' : 'email'}
+                      placeholder={formData.tipoUsuario === 'admin' ? 'admin' : 'tu@email.com'}
                       value={formData.email}
                       onChange={handleChange}
-                      required
+                      required={formData.tipoUsuario !== 'admin'}
                       className="h-11"
                     />
                   </div>

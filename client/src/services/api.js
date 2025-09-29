@@ -129,4 +129,56 @@ export const favoritesAPI = {
   }
 };
 
+// API para perfil de empleado
+export const profileAPI = {
+  // Obtener perfil del empleado
+  getProfile: async (employeeId) => {
+    try {
+      const response = await api.get(`/empleado/perfil/${employeeId}`);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error obteniendo perfil:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error cargando perfil' 
+      };
+    }
+  },
+
+  // Actualizar perfil del empleado
+  updateProfile: async (employeeId, profileData) => {
+    try {
+      const response = await api.put(`/empleado/perfil/${employeeId}`, profileData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error actualizando perfil:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error actualizando perfil' 
+      };
+    }
+  },
+
+  // Actualizar foto de perfil
+  updateProfilePhoto: async (employeeId, photoFile) => {
+    try {
+      const formData = new FormData();
+      formData.append('foto', photoFile);
+      
+      const response = await api.put(`/empleado/foto-perfil/${employeeId}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error actualizando foto de perfil:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Error actualizando foto de perfil' 
+      };
+    }
+  }
+};
+
 export default api;

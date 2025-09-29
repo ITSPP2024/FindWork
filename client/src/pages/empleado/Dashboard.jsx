@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api, { applicationsAPI, favoritesAPI } from '../../services/api';
 import ApplicationModal from '../../components/ApplicationModal';
 import AdvancedFilters from '../../components/AdvancedFilters';
+import JobDetailModal from '../../components/modals/JobDetailModal';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
@@ -32,6 +33,10 @@ const EmpleadoDashboard = () => {
   const [selectedJobType, setSelectedJobType] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [applicationModal, setApplicationModal] = useState({
+    isOpen: false,
+    vacante: null
+  });
+  const [jobDetailModal, setJobDetailModal] = useState({
     isOpen: false,
     vacante: null
   });
@@ -131,42 +136,69 @@ const EmpleadoDashboard = () => {
       isOpen: false,
       vacante: null
     });
-    setApplicationData({
-      carta_presentacion: '',
-      salario_esperado: '',
-      disponibilidad: ''
+  };
+
+  const handleViewDetails = (vacante) => {
+    setJobDetailModal({
+      isOpen: true,
+      vacante: vacante
     });
+  };
+
+  const handleCloseDetailModal = () => {
+    setJobDetailModal({
+      isOpen: false,
+      vacante: null
+    });
+  };
+
+  const handleApplyFromDetail = (vacante) => {
+    handleCloseDetailModal();
+    handleApplyClick(vacante);
   };
 
   const handleSubmitApplication = async (applicationData) => {
     try {
-      await applicationsAPI.createApplication({
+      const result = await applicationsAPI.applyToJob({
         puesto_id: applicationModal.vacante.idPuestos,
         ...applicationData
       });
       
-      handleCloseModal();
-      fetchAplicaciones();
-      alert('Aplicación enviada exitosamente');
+      if (result.success) {
+        handleCloseModal();
+        fetchAplicaciones();
+        alert('Aplicación enviada exitosamente');
+        return { success: true };
+      } else {
+        alert(result.error || 'Error al enviar la aplicación');
+        return { success: false };
+      }
     } catch (error) {
       console.error('Error submitting application:', error);
       alert('Error al enviar la aplicación');
+      return { success: false };
     }
   };
 
   const toggleFavorite = async (puestoId) => {
     try {
-      const isFavorite = favoritos.some(fav => fav.puesto_id === puestoId);
+      const result = await favoritesAPI.toggleFavorite(puestoId);
       
-      if (isFavorite) {
-        await favoritesAPI.removeFavorite(puestoId);
+      if (result.success) {
+        fetchFavoritos();
+        // Mostrar mensaje de éxito opcional
+        if (result.data.action === 'added') {
+          console.log('Vacante agregada a favoritos');
+        } else {
+          console.log('Vacante eliminada de favoritos');
+        }
       } else {
-        await favoritesAPI.addFavorite(puestoId);
+        console.error('Error toggling favorite:', result.error);
+        alert('Error al actualizar favoritos');
       }
-      
-      fetchFavoritos();
     } catch (error) {
       console.error('Error toggling favorite:', error);
+      alert('Error al actualizar favoritos');
     }
   };
 
@@ -453,7 +485,11 @@ const EmpleadoDashboard = () => {
                                 <Send className="h-4 w-4 mr-2" />
                                 Aplicar Ahora
                               </Button>
-                              <Button variant="outline" className="border-border/50">
+                              <Button 
+                                variant="outline" 
+                                className="border-border/50"
+                                onClick={() => handleViewDetails(vacante)}
+                              >
                                 <Eye className="h-4 w-4 mr-2" />
                                 Ver Detalles
                               </Button>
@@ -712,6 +748,13 @@ const EmpleadoDashboard = () => {
         onClose={handleCloseModal}
         vacante={applicationModal.vacante}
         onSubmit={handleSubmitApplication}
+      />
+
+      <JobDetailModal
+        isOpen={jobDetailModal.isOpen}
+        onClose={handleCloseDetailModal}
+        vacante={jobDetailModal.vacante}
+        onApply={handleApplyFromDetail}
       />
     </div>
   );

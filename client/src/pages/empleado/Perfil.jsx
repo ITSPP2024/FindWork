@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import api from '../../services/api';
+import { profileAPI } from '../../services/api';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -37,12 +37,25 @@ const EmpleadoPerfil = () => {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [saving, setSaving] = useState(false);
+  const [editedData, setEditedData] = useState({});
 
   useEffect(() => {
     const fetchPerfil = async () => {
       try {
-        const response = await api.get(`/api/empleado/perfil/${user.id}`);
-        setPerfil(response.data);
+        const result = await profileAPI.getProfile(user.id);
+        if (result.success) {
+          setPerfil(result.data);
+          setEditedData({
+            nombre: result.data.Nombre_Candidatos || '',
+            correo: result.data.Correo_Candidatos || '',
+            telefono: result.data.Numero_Candidatos || '',
+            descripcion: result.data.descripcion || '',
+            experiencia: result.data.Experiencia || ''
+          });
+        } else {
+          console.error('Error al cargar perfil:', result.error);
+        }
       } catch (error) {
         console.error('Error al cargar perfil:', error);
       } finally {
@@ -54,6 +67,56 @@ const EmpleadoPerfil = () => {
       fetchPerfil();
     }
   }, [user]);
+
+  const handleInputChange = (field, value) => {
+    setEditedData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const result = await profileAPI.updateProfile(user.id, {
+        nombre: editedData.nombre,
+        descripcion: editedData.descripcion,
+        telefono: editedData.telefono,
+        experiencia: editedData.experiencia
+      });
+
+      if (result.success) {
+        // Actualizar el estado local con los nuevos datos
+        setPerfil(prev => ({
+          ...prev,
+          Nombre_Candidatos: editedData.nombre,
+          descripcion: editedData.descripcion,
+          Numero_Candidatos: editedData.telefono,
+          Experiencia: editedData.experiencia
+        }));
+        setIsEditing(false);
+        alert('Perfil actualizado correctamente');
+      } else {
+        alert('Error al actualizar perfil: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error al guardar perfil:', error);
+      alert('Error al actualizar perfil');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditedData({
+      nombre: perfil?.Nombre_Candidatos || '',
+      correo: perfil?.Correo_Candidatos || '',
+      telefono: perfil?.Numero_Candidatos || '',
+      descripcion: perfil?.descripcion || '',
+      experiencia: perfil?.Experiencia || ''
+    });
+    setIsEditing(false);
+  };
 
   if (loading) {
     return (
@@ -149,7 +212,7 @@ const EmpleadoPerfil = () => {
                   </CardTitle>
                   <Button 
                     variant="outline" 
-                    onClick={() => setIsEditing(!isEditing)}
+                    onClick={() => isEditing ? handleCancel() : setIsEditing(true)}
                   >
                     {isEditing ? 'Cancelar' : 'Editar'}
                   </Button>
@@ -161,10 +224,10 @@ const EmpleadoPerfil = () => {
                   <Avatar className="h-24 w-24">
                     <AvatarImage 
                       src={perfil?.foto_perfil || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face"} 
-                      alt={perfil?.nombre || "Perfil profesional"} 
+                      alt={perfil?.Nombre_Candidatos || "Perfil profesional"} 
                     />
                     <AvatarFallback className="text-xl">
-                      {perfil?.nombre?.charAt(0) || 'U'}
+                      {perfil?.Nombre_Candidatos?.charAt(0) || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   {isEditing && (
@@ -181,7 +244,8 @@ const EmpleadoPerfil = () => {
                     <Label htmlFor="nombre">Nombre Completo</Label>
                     <Input
                       id="nombre"
-                      value={perfil?.nombre || ''}
+                      value={isEditing ? editedData.nombre : (perfil?.Nombre_Candidatos || '')}
+                      onChange={(e) => handleInputChange('nombre', e.target.value)}
                       readOnly={!isEditing}
                       className={!isEditing ? 'bg-muted' : ''}
                     />
@@ -191,25 +255,18 @@ const EmpleadoPerfil = () => {
                     <Input
                       id="email"
                       type="email"
-                      value={perfil?.correo || ''}
-                      readOnly={!isEditing}
-                      className={!isEditing ? 'bg-muted' : ''}
+                      value={perfil?.Correo_Candidatos || ''}
+                      readOnly={true}
+                      className="bg-muted"
+                      title="El correo no se puede modificar"
                     />
                   </div>
                   <div>
                     <Label htmlFor="telefono">Teléfono</Label>
                     <Input
                       id="telefono"
-                      value={perfil?.telefono || ''}
-                      readOnly={!isEditing}
-                      className={!isEditing ? 'bg-muted' : ''}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="ubicacion">Ubicación</Label>
-                    <Input
-                      id="ubicacion"
-                      value={perfil?.ubicacion || ''}
+                      value={isEditing ? editedData.telefono : (perfil?.Numero_Candidatos || '')}
+                      onChange={(e) => handleInputChange('telefono', e.target.value)}
                       readOnly={!isEditing}
                       className={!isEditing ? 'bg-muted' : ''}
                     />
@@ -220,29 +277,20 @@ const EmpleadoPerfil = () => {
                   <Label htmlFor="bio">Descripción Personal</Label>
                   <Textarea
                     id="bio"
-                    value={perfil?.descripcion || ''}
+                    value={isEditing ? editedData.descripcion : (perfil?.descripcion || '')}
+                    onChange={(e) => handleInputChange('descripcion', e.target.value)}
                     readOnly={!isEditing}
                     className={!isEditing ? 'bg-muted' : ''}
                     rows={4}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="observaciones">Observaciones</Label>
-                  <Textarea
-                    id="observaciones"
-                    value={perfil?.observaciones || ''}
-                    readOnly={!isEditing}
-                    className={!isEditing ? 'bg-muted' : ''}
-                    rows={3}
+                    placeholder="Describe tu perfil profesional, habilidades y objetivos..."
                   />
                 </div>
 
                 {isEditing && (
                   <div className="flex justify-end">
-                    <Button>
+                    <Button onClick={handleSave} disabled={saving}>
                       <Save className="h-4 w-4 mr-2" />
-                      Guardar Cambios
+                      {saving ? 'Guardando...' : 'Guardar Cambios'}
                     </Button>
                   </div>
                 )}
@@ -262,27 +310,41 @@ const EmpleadoPerfil = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {perfil?.experiencia ? (
+                  {perfil?.Experiencia ? (
                     <div className="space-y-4">
                       <div className="p-4 border rounded-lg">
                         <h4 className="font-medium mb-2">Experiencia Profesional</h4>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{perfil.experiencia}</p>
+                        {isEditing ? (
+                          <Textarea
+                            value={editedData.experiencia}
+                            onChange={(e) => handleInputChange('experiencia', e.target.value)}
+                            rows={6}
+                            placeholder="Describe tu experiencia laboral, logros y responsabilidades..."
+                          />
+                        ) : (
+                          <p className="text-muted-foreground whitespace-pre-wrap">{perfil.Experiencia}</p>
+                        )}
                       </div>
-                      {isEditing && (
-                        <Button variant="outline">
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar Experiencia
-                        </Button>
-                      )}
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                       <p className="text-muted-foreground">Aún no has agregado experiencia laboral</p>
-                      <Button variant="outline" className="mt-4">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Agregar Experiencia
-                      </Button>
+                      {isEditing ? (
+                        <div className="mt-4">
+                          <Textarea
+                            value={editedData.experiencia}
+                            onChange={(e) => handleInputChange('experiencia', e.target.value)}
+                            rows={6}
+                            placeholder="Describe tu experiencia laboral, logros y responsabilidades..."
+                          />
+                        </div>
+                      ) : (
+                        <Button variant="outline" className="mt-4" onClick={() => setIsEditing(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Agregar Experiencia
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>

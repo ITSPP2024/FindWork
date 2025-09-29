@@ -806,8 +806,174 @@ app.get('/api/admin/usuarios', authenticateToken, requireRole('admin'), (req, re
   });
 });
 
+// Eliminar usuario
+app.delete('/api/admin/usuario/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const userId = req.params.id;
+  const { tipo } = req.query; // Esperamos que se pase el tipo como query parameter
+
+  if (!tipo || (tipo !== 'empleado' && tipo !== 'empresa')) {
+    return res.status(400).json({ error: 'Tipo de usuario requerido (empleado o empresa)' });
+  }
+
+  let deleteQuery;
+  let tableName;
+  let idColumn;
+
+  if (tipo === 'empleado') {
+    tableName = 'candidatos';
+    idColumn = 'idCandidatos';
+    deleteQuery = `DELETE FROM ${tableName} WHERE ${idColumn} = ?`;
+  } else if (tipo === 'empresa') {
+    tableName = 'empresa';
+    idColumn = 'idEmpresa';
+    deleteQuery = `DELETE FROM ${tableName} WHERE ${idColumn} = ?`;
+  }
+
+  db.query(deleteQuery, [userId], (err, result) => {
+    if (err) {
+      console.error('Error eliminando usuario:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json({ message: 'Usuario eliminado exitosamente' });
+  });
+});
+
 // Iniciar servidor
 // === RUTAS PARA APLICACIONES ===
+
+// Obtener detalles de un usuario específico
+app.get('/api/admin/usuario/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+  const { tipo } = req.query;
+
+  if (!tipo || !['empleado', 'empresa'].includes(tipo)) {
+    return res.status(400).json({ error: 'Tipo de usuario requerido (empleado o empresa)' });
+  }
+
+  let query;
+  if (tipo === 'empleado') {
+    query = `
+      SELECT 
+        idCandidatos as id,
+        Nombre_Candidatos as nombre,
+        Correo_Candidatos as email,
+        Numero_Candidatos as telefono,
+        Experiencia as experiencia,
+        Documentos as documentos,
+        foto_perfil,
+        descripcion,
+        fecha_actualizacion,
+        'empleado' as tipo
+      FROM candidatos 
+      WHERE idCandidatos = ?
+    `;
+  } else {
+    query = `
+      SELECT 
+        idEmpresa as id,
+        Nombre_Empresa as nombre,
+        Correo_Empresa as email,
+        Telefono_Empresa as telefono,
+        Numero_Empresa as numero_empresa,
+        Ubicacion,
+        foto_perfil,
+        descripcion,
+        fecha_actualizacion,
+        'empresa' as tipo
+      FROM empresa 
+      WHERE idEmpresa = ?
+    `;
+  }
+
+  db.query(query, [id], (err, results) => {
+    if (err) {
+      console.error('❌ [SQL ERROR] Error obteniendo detalles del usuario:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    console.log('✅ [SQL SUCCESS] Detalles de usuario obtenidos exitosamente');
+    res.json(results[0]);
+  });
+});
+
+// Actualizar usuario
+app.put('/api/admin/usuario/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+  const { tipo } = req.query;
+  const updateData = req.body;
+
+  if (!tipo || !['empleado', 'empresa'].includes(tipo)) {
+    return res.status(400).json({ error: 'Tipo de usuario requerido (empleado o empresa)' });
+  }
+
+  let query;
+  let params;
+
+  if (tipo === 'empleado') {
+    query = `
+      UPDATE candidatos SET 
+        Nombre_Candidatos = ?,
+        Correo_Candidatos = ?,
+        Numero_Candidatos = ?,
+        Experiencia = ?,
+        descripcion = ?,
+        fecha_actualizacion = NOW()
+      WHERE idCandidatos = ?
+    `;
+    params = [
+      updateData.nombre,
+      updateData.email,
+      updateData.telefono,
+      updateData.experiencia,
+      updateData.descripcion,
+      id
+    ];
+  } else {
+    query = `
+      UPDATE empresa SET 
+        Nombre_Empresa = ?,
+        Correo_Empresa = ?,
+        Telefono_Empresa = ?,
+        Numero_Empresa = ?,
+        Ubicacion = ?,
+        descripcion = ?,
+        fecha_actualizacion = NOW()
+      WHERE idEmpresa = ?
+    `;
+    params = [
+      updateData.nombre,
+      updateData.email,
+      updateData.telefono,
+      updateData.numero_empresa,
+      updateData.ubicacion,
+      updateData.descripcion,
+      id
+    ];
+  }
+
+  db.query(query, params, (err, result) => {
+    if (err) {
+      console.error('❌ [SQL ERROR] Error actualizando usuario:', err);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    console.log('✅ [SQL SUCCESS] Usuario actualizado exitosamente');
+    res.json({ message: 'Usuario actualizado exitosamente' });
+  });
+});
 
 // Aplicar a una vacante
 app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), async (req, res) => {

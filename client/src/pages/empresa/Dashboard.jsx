@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import { Button } from '../../components/ui/button';
@@ -10,13 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
-import { Search, MapPin, Clock, DollarSign, Heart, Eye, Filter, User, Briefcase, TrendingUp, Calendar, Building2, Send, X, ChevronDown, Plus, Star, Users, FileText, CheckCircle, AlertCircle, Clock3 } from 'lucide-react';
+import { Search, MapPin, Clock, DollarSign, Heart, Eye, Filter, User, Briefcase, TrendingUp, Calendar, Building2, Send, X, ChevronDown, Plus, Star, Users, FileText, CheckCircle, AlertCircle, Clock3, Mail, MoreHorizontal, Edit, Trash2, Phone } from 'lucide-react';
 import '../../styles/Dashboard.css';
 import '../../styles/Applications.css';
 import '../../styles/ApplicationManagement.css';
 
 const EmpresaDashboard = () => {
   const { user, logout } = useAuth();
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('vacantes');
   const [vacantes, setVacantes] = useState([]);
   const [aplicaciones, setAplicaciones] = useState([]);
@@ -24,6 +25,7 @@ const EmpresaDashboard = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedAplicacion, setSelectedAplicacion] = useState(null);
   const [vacanteEditando, setVacanteEditando] = useState(null);
+  const [perfil, setPerfil] = useState(null);
 
   const [filters, setFilters] = useState({
     estado: '',
@@ -39,12 +41,19 @@ const EmpresaDashboard = () => {
   });
 
   useEffect(() => {
+    // Leer el parámetro tab de la URL
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['vacantes', 'aplicaciones', 'perfil'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+    
     // Asegurar que el modal esté cerrado al montar el componente
     setShowCreateModal(false);
     // Cargar ambos datos al inicio para tener counts correctos
     fetchVacantes();
     fetchAplicaciones();
-  }, []);
+    fetchPerfil();
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeTab === 'vacantes') {
@@ -89,6 +98,15 @@ const EmpresaDashboard = () => {
       console.error('Error cargando aplicaciones:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPerfil = async () => {
+    try {
+      const response = await api.get(`/empresa/perfil/${user.id}`);
+      setPerfil(response.data);
+    } catch (error) {
+      console.error('Error cargando perfil:', error);
     }
   };
 
@@ -139,16 +157,20 @@ const EmpresaDashboard = () => {
   };
 
   const getStatusBadge = (estado) => {
-    const statusMap = {
-      'pendiente': { text: 'Pendiente', className: 'status-pending' },
-      'revisando': { text: 'Revisando', className: 'status-reviewing' },
-      'entrevista': { text: 'Entrevista', className: 'status-interview' },
-      'aceptado': { text: 'Aceptado', className: 'status-accepted' },
-      'rechazado': { text: 'Rechazado', className: 'status-rejected' }
+    const statusConfig = {
+      pendiente: { text: 'Pendiente', color: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' },
+      revisando: { text: 'Revisando', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
+      entrevista: { text: 'Entrevista', color: 'bg-purple-500/10 text-purple-600 border-purple-500/20' },
+      aceptado: { text: 'Aceptado', color: 'bg-green-500/10 text-green-600 border-green-500/20' },
+      rechazado: { text: 'Rechazado', color: 'bg-red-500/10 text-red-600 border-red-500/20' }
     };
     
-    const status = statusMap[estado] || { text: estado, className: 'status-default' };
-    return <span className={`status-badge ${status.className}`}>{status.text}</span>;
+    const config = statusConfig[estado] || statusConfig.pendiente;
+    return (
+      <Badge className={`${config.color} font-medium`}>
+        {config.text}
+      </Badge>
+    );
   };
 
   const filterAplicaciones = () => {
@@ -203,7 +225,8 @@ const EmpresaDashboard = () => {
             <div className="hidden md:flex items-center space-x-1 bg-muted/50 rounded-lg p-1">
               {[
                 { id: 'vacantes', label: 'Mis Vacantes', icon: FileText },
-                { id: 'aplicaciones', label: `Aplicaciones (${aplicaciones.length})`, icon: Users }
+                { id: 'aplicaciones', label: `Aplicaciones (${aplicaciones.length})`, icon: Users },
+                { id: 'perfil', label: 'Mi Perfil', icon: User }
               ].map(({ id, label, icon: Icon }) => (
                 <Button
                   key={id}
@@ -219,14 +242,6 @@ const EmpresaDashboard = () => {
                   <span>{label}</span>
                 </Button>
               ))}
-              {/* Mi Perfil como Link separado */}
-              <Link
-                to="/empresa/perfil"
-                className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 text-muted-foreground hover:text-foreground hover:bg-background/50"
-              >
-                <User className="h-4 w-4" />
-                <span>Mi Perfil</span>
-              </Link>
             </div>
 
             {/* User Menu */}
@@ -299,64 +314,71 @@ const EmpresaDashboard = () => {
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                      <Clock3 className="h-6 w-6 text-yellow-600" />
-                    </div>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-orange-50 to-pink-50 border border-orange-200">
+                  <div className="flex items-center">
+                    <Clock className="h-6 w-6 mr-3 text-orange-600" />
                     <div>
-                      <p className="text-2xl font-bold text-foreground">
+                      <p className="text-2xl font-bold text-orange-900">
                         {aplicaciones.filter(a => a.estado === 'pendiente').length}
                       </p>
-                      <p className="text-sm text-muted-foreground">Pendientes</p>
+                      <p className="text-sm text-orange-700">Pendientes</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                      <Users className="h-6 w-6 text-blue-600" />
-                    </div>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
+                  <div className="flex items-center">
+                    <Users className="h-6 w-6 mr-3 text-blue-600" />
                     <div>
-                      <p className="text-2xl font-bold text-foreground">
+                      <p className="text-2xl font-bold text-blue-900">
                         {aplicaciones.filter(a => a.estado === 'entrevista').length}
                       </p>
-                      <p className="text-sm text-muted-foreground">Entrevistas</p>
+                      <p className="text-sm text-blue-700">Entrevistas</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                      <CheckCircle className="h-6 w-6 text-green-600" />
-                    </div>
+            <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-center p-3 rounded-lg bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-6 w-6 mr-3 text-emerald-600" />
                     <div>
-                      <p className="text-2xl font-bold text-foreground">
+                      <p className="text-2xl font-bold text-emerald-900">
                         {aplicaciones.filter(a => a.estado === 'aceptado').length}
                       </p>
-                      <p className="text-sm text-muted-foreground">Aceptados</p>
+                      <p className="text-sm text-emerald-700">Aceptados</p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </CardContent>
+            </Card>
             </div>
 
             {/* Filtros de aplicaciones */}
             <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg mb-6">
               <CardContent className="p-6">
                 <div className="flex flex-col lg:flex-row gap-4">
+                  <Input
+                    placeholder="Buscar por candidato o puesto..."
+                    value={filters.puesto}
+                    onChange={(e) => setFilters({...filters, puesto: e.target.value})}
+                    className="flex-1 lg:flex-1"
+                  />
+
                   <Select value={filters.estado} onValueChange={(value) => setFilters({...filters, estado: value})}>
-                    <SelectTrigger className="w-full lg:w-48">
-                      <SelectValue placeholder="Todos los estados" />
+                    <SelectTrigger className="w-full lg:flex-1">
+                      <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Todos los estados</SelectItem>
+                      <SelectItem value="">Todos</SelectItem>
                       <SelectItem value="pendiente">Pendiente</SelectItem>
                       <SelectItem value="revisando">Revisando</SelectItem>
                       <SelectItem value="entrevista">Entrevista</SelectItem>
@@ -366,24 +388,17 @@ const EmpresaDashboard = () => {
                   </Select>
 
                   <Input
-                    placeholder="Buscar por puesto..."
-                    value={filters.puesto}
-                    onChange={(e) => setFilters({...filters, puesto: e.target.value})}
-                    className="flex-1"
-                  />
-
-                  <Input
                     type="date"
                     value={filters.fechaDesde}
                     onChange={(e) => setFilters({...filters, fechaDesde: e.target.value})}
-                    className="w-full lg:w-40"
+                    className="flex-1 lg:flex-1"
                   />
 
                   <Input
                     type="date"
                     value={filters.fechaHasta}
                     onChange={(e) => setFilters({...filters, fechaHasta: e.target.value})}
-                    className="w-full lg:w-40"
+                    className="flex-1 lg:flex-1"
                   />
 
                   {(filters.estado || filters.puesto || filters.fechaDesde || filters.fechaHasta) && (
@@ -426,85 +441,263 @@ const EmpresaDashboard = () => {
             ) : (
               <div className="aplicaciones-grid">
                 {filterAplicaciones().map((aplicacion) => (
-                  <div key={aplicacion.idAplicacion} className="aplicacion-card">
-                    <div className="aplicacion-header">
-                      <div className="candidato-info">
-                        <div className="candidato-avatar">
-                          {aplicacion.candidato_nombre?.charAt(0) || 'U'}
-                        </div>
-                        <div className="candidato-details">
-                          <h3>{aplicacion.candidato_nombre}</h3>
-                          <p>{aplicacion.candidato_email}</p>
-                          <p className="puesto-aplicado">{aplicacion.puesto_titulo}</p>
-                        </div>
-                      </div>
-                      {getStatusBadge(aplicacion.estado)}
-                    </div>
+                   <Card key={aplicacion.idAplicacion} className="border-border/50 hover:shadow-lg transition-all duration-300 bg-card/50 backdrop-blur-sm group">
+                     <CardContent className="p-6">
+                       <div className="flex justify-between items-start mb-4">
+                         <div className="flex-1">
+                           <div className="flex items-center gap-3 mb-2">
+                             <h3 className="text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                               {aplicacion.candidato_nombre}
+                             </h3>
+                             {getStatusBadge(aplicacion.estado)}
+                           </div>
+                           <div className="flex items-center text-muted-foreground mb-3">
+                             <Briefcase className="h-4 w-4 mr-2 text-primary" />
+                             <span className="font-medium">Aplicó para: {aplicacion.puesto_titulo}</span>
+                           </div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                           <Badge className="bg-primary/10 text-primary border-primary/20">
+                             CANDIDATO
+                           </Badge>
+                         </div>
+                       </div>
 
-                    <div className="aplicacion-info">
-                      <div className="info-row">
-                        <span className="info-label">📅 Aplicó:</span>
-                        <span>{new Date(aplicacion.fecha_aplicacion).toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}</span>
-                      </div>
-                      
-                      {aplicacion.salario_esperado && (
-                        <div className="info-row">
-                          <span className="info-label">💰 Salario esperado:</span>
-                          <span>${aplicacion.salario_esperado.toLocaleString()}</span>
-                        </div>
-                      )}
+                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                         <div className="flex items-center text-sm text-muted-foreground">
+                           <Mail className="h-4 w-4 mr-2 text-primary" />
+                           <span>{aplicacion.candidato_email}</span>
+                         </div>
+                         <div className="flex items-center text-sm text-muted-foreground">
+                           <Calendar className="h-4 w-4 mr-2 text-primary" />
+                           <span>{new Date(aplicacion.fecha_aplicacion).toLocaleDateString('es-ES', {
+                             year: 'numeric',
+                             month: 'short',
+                             day: 'numeric'
+                           })}</span>
+                         </div>
+                         {aplicacion.salario_esperado && (
+                           <div className="flex items-center text-sm text-muted-foreground">
+                             <DollarSign className="h-4 w-4 mr-2 text-primary" />
+                             <span className="font-semibold text-primary">
+                               ${aplicacion.salario_esperado.toLocaleString()}
+                             </span>
+                           </div>
+                         )}
+                         {aplicacion.disponibilidad && (
+                           <div className="flex items-center text-sm text-muted-foreground">
+                             <Clock className="h-4 w-4 mr-2 text-primary" />
+                             <span>{aplicacion.disponibilidad}</span>
+                           </div>
+                         )}
+                       </div>
 
-                      {aplicacion.disponibilidad && (
-                        <div className="info-row">
-                          <span className="info-label">⏰ Disponibilidad:</span>
-                          <span>{aplicacion.disponibilidad}</span>
-                        </div>
-                      )}
-                    </div>
+                       {aplicacion.carta_presentacion && (
+                         <div className="mb-4">
+                           <p className="text-sm font-medium text-foreground mb-2">Carta de presentación:</p>
+                           <p className="text-muted-foreground text-sm line-clamp-3 bg-muted/50 p-3 rounded-lg border-l-4 border-primary">
+                             {aplicacion.carta_presentacion}
+                           </p>
+                         </div>
+                       )}
 
-                    {aplicacion.carta_presentacion && (
-                      <div className="carta-preview">
-                        <h4>Carta de presentación:</h4>
-                        <p>{aplicacion.carta_presentacion.substring(0, 150)}...</p>
-                      </div>
-                    )}
-
-                    <div className="aplicacion-actions">
-                      <Button
-                        variant="outline"
-                        onClick={() => setSelectedAplicacion(aplicacion)}
-                      >
-                        Ver Detalles
-                      </Button>
-                      
-                      {aplicacion.estado === 'pendiente' && (
-                        <div className="quick-actions">
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleUpdateEstado(aplicacion.idAplicacion, 'revisando')}
-                          >
-                            ✓ Revisar
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleUpdateEstado(aplicacion.idAplicacion, 'rechazado')}
-                          >
-                            ✕ Rechazar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                       <div className="flex justify-between items-center">
+                         <div className="flex gap-2">
+                           <Button
+                             onClick={() => setSelectedAplicacion(aplicacion)}
+                             size="sm"
+                             className="bg-primary hover:bg-primary/90"
+                           >
+                             <Eye className="h-4 w-4 mr-2" />
+                             Ver Detalles
+                           </Button>
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             className="hover:bg-primary/10 hover:border-primary hover:text-primary"
+                           >
+                             <Mail className="h-4 w-4 mr-2" />
+                             Contactar
+                           </Button>
+                         </div>
+                         <Select value={aplicacion.estado} onValueChange={(value) => handleUpdateEstado(aplicacion.idAplicacion, value)}>
+                           <SelectTrigger className="w-32">
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="pendiente">Pendiente</SelectItem>
+                             <SelectItem value="revisando">Revisando</SelectItem>
+                             <SelectItem value="entrevista">Entrevista</SelectItem>
+                             <SelectItem value="aceptado">Aceptado</SelectItem>
+                             <SelectItem value="rechazado">Rechazado</SelectItem>
+                           </SelectContent>
+                         </Select>
+                       </div>
+                     </CardContent>
+                   </Card>
                 ))}
               </div>
             )}
           </div>
+        )}
+
+        {/* Contenido de Mi Perfil */}
+        {activeTab === 'perfil' && (
+          <>
+            {/* Header */}
+            <div className="text-center mb-8">
+              <h2 className="text-4xl font-bold text-foreground mb-3">
+                Mi Perfil
+              </h2>
+              <p className="text-lg text-muted-foreground">
+                Gestiona la información de tu empresa
+              </p>
+            </div>
+
+            <div className="max-w-4xl mx-auto">
+              {/* Profile Card */}
+              <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg mb-8">
+                <CardHeader className="pb-4">
+                  <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
+                    <div className="w-24 h-24 bg-gradient-to-br from-primary to-primary/80 rounded-xl flex items-center justify-center shadow-lg">
+                      <span className="text-2xl font-bold text-primary-foreground">
+                        {perfil?.nombre?.charAt(0) || user?.nombre?.charAt(0) || 'E'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex-1 text-center sm:text-left">
+                      <h3 className="text-2xl font-bold text-foreground mb-2">
+                        {perfil?.nombre || user?.nombre || 'Empresa'}
+                      </h3>
+                      <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4 text-muted-foreground">
+                        <div className="flex items-center space-x-2">
+                          <Mail className="h-4 w-4" />
+                          <span>{perfil?.correo || user?.email}</span>
+                        </div>
+                        {perfil?.telefono && (
+                          <div className="flex items-center space-x-2">
+                            <Phone className="h-4 w-4" />
+                            <span>{perfil.telefono}</span>
+                          </div>
+                        )}
+                        {perfil?.ubicacion && (
+                          <div className="flex items-center space-x-2">
+                            <MapPin className="h-4 w-4" />
+                            <span>{perfil.ubicacion}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <Button asChild className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70">
+                      <Link to="/empresa/editar-perfil">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Editar Perfil
+                      </Link>
+                    </Button>
+                  </div>
+                </CardHeader>
+              </Card>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Company Information */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <span>Información de la Empresa</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between py-2 border-b border-border/30">
+                        <span className="text-sm font-medium text-muted-foreground">Teléfono</span>
+                        <span className="text-sm text-foreground">{perfil?.telefono || 'No especificado'}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-border/30">
+                        <span className="text-sm font-medium text-muted-foreground">Email</span>
+                        <span className="text-sm text-foreground">{perfil?.correo || user?.email}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm font-medium text-muted-foreground">Ubicación</span>
+                        <span className="text-sm text-foreground">{perfil?.ubicacion || 'No especificada'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Company Description */}
+                <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center space-x-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      <span>Descripción de la Empresa</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {perfil?.descripcion ? (
+                      <p className="text-sm text-muted-foreground leading-relaxed">{perfil.descripcion}</p>
+                    ) : (
+                      <div className="text-center py-8">
+                        <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Agrega una descripción de tu empresa para atraer mejores candidatos
+                        </p>
+                        <Button asChild variant="outline" size="sm">
+                          <Link to="/empresa/editar-perfil">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Agregar Descripción
+                          </Link>
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Statistics */}
+              <Card className="border-border/50 bg-card/50 backdrop-blur-sm shadow-lg mt-8">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    <span>Estadísticas</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Resumen de la actividad de tu empresa
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-lg border border-blue-200/50">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <FileText className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-blue-900 mb-1">{vacantes.length}</div>
+                      <div className="text-sm text-blue-700">Vacantes Activas</div>
+                    </div>
+                    
+                    <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100/50 rounded-lg border border-green-200/50">
+                      <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <Users className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-green-900 mb-1">{aplicaciones.length}</div>
+                      <div className="text-sm text-green-700">Aplicantes Totales</div>
+                    </div>
+                    
+                    <div className="text-center p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-lg border border-purple-200/50">
+                      <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                        <TrendingUp className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <div className="text-2xl font-bold text-purple-900 mb-1">
+                        {aplicaciones.filter(a => a.estado === 'aceptado').length}
+                      </div>
+                      <div className="text-sm text-purple-700">Contrataciones</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
         )}
 
         {/* Modal de detalle de candidato */}

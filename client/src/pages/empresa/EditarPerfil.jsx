@@ -190,7 +190,7 @@ const EditarPerfilEmpresa = () => {
   return (
     <div className="editar-perfil">
       <div className="editar-perfil-header">
-        <Link to="/empresa/perfil" className="btn-regresar">← Regresar al Perfil</Link>
+        <Link to="/empresa/dashboard?tab=perfil" className="btn-regresar">← Regresar al Perfil</Link>
         <h2>🏢 Editar Perfil de Empresa</h2>
       </div>
 
