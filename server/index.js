@@ -11,125 +11,72 @@ require('dotenv').config();
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Para recibir base64 grande
-const PORT = process.env.PORT || 3000;
-app.use("/Fotos", express.static(path.join(process.cwd(), "Fotos")));
-
+const PORT = process.env.PORT || 3001;
 
 // Middlewares
 // Configurar CORS de forma segura
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? process.env.FRONTEND_URL || 'https://your-domain.com'
-    : ['http://localhost:5000', 'http://127.0.0.1:5000', 'http://localhost:5001', 'http://127.0.0.1:5001'],
+    : ['http://localhost:5000', 'http://127.0.0.1:5000'],
   credentials: true,
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Nota: Middleware de archivos se configurará después de definir authenticateToken
+// Configuración de conexión a MySQL
+const db = mysql.createConnection({
+  host: 'localhost',
+  user: 'root',
+  password: 'admin',
+  database: 'powerman',
+  // Habilitar logs de SQL para debugging
+  debug: false,
+  multipleStatements: true
+});
 
-// Nota: Archivos protegidos por autenticación - no serving estático público
-
-// Crear directorios Fotos y PDF si no existen
-fs.ensureDirSync(path.join(__dirname, '..', 'Fotos'));
-fs.ensureDirSync(path.join(__dirname, '..', 'PDF'));
-
-// Configuraciones de conexión a MySQL (múltiples opciones)
-const dbConfigs = [
-  {
-    name: 'Configuración original',
-    config: {
-      host: 'localhost',
-      user: 'root',
-      password: 'admin',
-      database: 'powerman',
-      debug: false,
-      multipleStatements: true
-    }
-  },
-  {
-    name: 'Configuración alternativa',
-    config: {
-      host: 'localhost',
-      user: 'root',
-      password: 'Admin',
-      database: 'powerman',
-      debug: false,
-      multipleStatements: true
-    }
+// Interceptar todas las queries para logging
+const originalQuery = db.query;
+db.query = function(sql, params, callback) {
+  // Si solo se pasan 2 argumentos, el segundo es el callback
+  if (typeof params === 'function') {
+    callback = params;
+    params = null;
   }
-];
-
-let db = null;
-let currentConfigIndex = 0;
-
-// Función para intentar conectar con múltiples configuraciones
-function connectToDatabase() {
-  return new Promise((resolve, reject) => {
-    function tryConnection(configIndex) {
-      if (configIndex >= dbConfigs.length) {
-        reject(new Error('No se pudo conectar con ninguna configuración de base de datos'));
-        return;
-      }
-
-      const currentConfig = dbConfigs[configIndex];
-      console.log(`🔄 Intentando conectar con: ${currentConfig.name}`);
-      
-      const connection = mysql.createConnection(currentConfig.config);
-      
-      connection.connect((err) => {
-        if (err) {
-          console.log(`❌ Falló conexión con ${currentConfig.name}:`, err.message);
-          connection.destroy();
-          tryConnection(configIndex + 1);
-        } else {
-          console.log(`✅ Conectado exitosamente con: ${currentConfig.name}`);
-          db = connection;
-          currentConfigIndex = configIndex;
-          
-          // Interceptar todas las queries para logging
-          const originalQuery = db.query;
-          db.query = function(sql, params, callback) {
-            // Si solo se pasan 2 argumentos, el segundo es el callback
-            if (typeof params === 'function') {
-              callback = params;
-              params = undefined;
-            }
-            
-            return originalQuery.call(this, sql, params, function(err, results, fields) {
-              if (err) {
-                console.error('❌ [SQL ERROR] ==========================================');
-                console.error('❌ [SQL ERROR] Query que falló:', typeof sql === 'string' ? sql.trim() : sql);
-                console.error('❌ [SQL ERROR] Parámetros:', params);
-                console.error('❌ [SQL ERROR] Código de error:', err.code);
-                console.error('❌ [SQL ERROR] Mensaje:', err.sqlMessage || err.message);
-                console.error('❌ [SQL ERROR] Error completo:', err);
-                console.error('❌ [SQL ERROR] ==========================================');
-              } else {
-                console.log('✅ [SQL SUCCESS] Query ejecutada exitosamente');
-              }
-              
-              if (callback) {
-                callback(err, results, fields);
-              }
-            });
-          };
-          
-          resolve(connection);
-        }
-      });
+  
+  console.log('💾 [SQL QUERY]:', typeof sql === 'string' ? sql.trim() : sql);
+  if (params) {
+    console.log('📋 [SQL PARAMS]:', params);
+  }
+  
+  return originalQuery.call(this, sql, params, function(err, results, fields) {
+    if (err) {
+      console.error('❌ [SQL ERROR] ==========================================');
+      console.error('❌ [SQL ERROR] Query que falló:', typeof sql === 'string' ? sql.trim() : sql);
+      console.error('❌ [SQL ERROR] Parámetros:', params);
+      console.error('❌ [SQL ERROR] Código de error:', err.code);
+      console.error('❌ [SQL ERROR] Mensaje:', err.sqlMessage || err.message);
+      console.error('❌ [SQL ERROR] Error completo:', err);
+      console.error('❌ [SQL ERROR] ==========================================');
+    } else {
+      console.log('✅ [SQL SUCCESS] Query ejecutada exitosamente');
     }
     
-    tryConnection(0);
+    if (callback) {
+      callback(err, results, fields);
+    }
   });
-}
+};
 
-// Inicializar conexión a la base de datos
-connectToDatabase().catch((err) => {
-  console.error('❌ Error conectando a MySQL:', err.message);
-  console.log('⚠️  La aplicación continuará sin base de datos (modo simulación)');
+// Conectar a la base de datos
+db.connect((err) => {
+  if (err) {
+    console.error('⚠️  Error conectando a MySQL:', err.message);
+    console.log('💡 La aplicación funcionará con datos simulados.');
+    return;
+  }
+  console.log('✅ Conectado a MySQL database');
 });
 
 // JWT Secret
@@ -148,16 +95,22 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+const uploadDir = path.join(
+  "C:/Users/Joshua/Downloads/Trabajos/Base de datos/FindWork/uploads/fotos"
+);
 // Configuración de Multer para diferentes tipos de archivos
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB límite
-  }
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // nombre único
+  },
 });
+const upload = multer({ storage });
 
+// 🔹 Servir la carpeta de fotos estáticamente
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 // Middleware de autenticación
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -185,23 +138,6 @@ const requireRole = (role) => {
     next();
   };
 };
-
-
-// Servir archivos estáticos de forma segura (después de definir authenticateToken)
-app.use('/uploads', authenticateToken, (req, res, next) => {
-  // Solo permitir acceso a archivos del usuario autenticado
-  const filePath = req.path;
-  const userId = req.user.id;
-  
-  // Verificar que el archivo pertenece al usuario con patrón estricto
-  const userFilePattern = new RegExp(`^/(profiles|cvs|documents)/(empresa_)?${userId}_`);
-  if (userFilePattern.test(filePath)) {
-    next();
-  } else {
-    res.status(403).json({ error: 'Acceso denegado al archivo' });
-  }
-}, express.static(path.join(__dirname, 'uploads')));
-
 // === RUTAS DE AUTENTICACIÓN ===
 
 // Login con selección manual de tipo de usuario
@@ -413,80 +349,49 @@ app.put('/api/empleado/perfil/:id', authenticateToken, requireRole('empleado'), 
   });
 });
 
-// Actualizar foto de perfil del empleado
-app.put('/api/empleado/foto-perfil/:id', authenticateToken, requireRole('empleado'), upload.single('foto'), async (req, res) => {
-  const { id } = req.params;
-
-  if (req.user.id !== parseInt(id)) {
-    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
-  }
-
-  if (!req.file) return res.status(400).json({ error: 'No se subió ninguna foto' });
-
-  const fotoBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-
-  const query = 'UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?';
-  db.query(query, [fotoBase64, id], (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Error subiendo foto' });
+app.put(
+  "/api/empleado/foto-perfil/:id",
+  authenticateToken,
+  requireRole("empleado"),
+  upload.single("foto"), // 👈 debe coincidir con frontend (formData.append("foto", archivo))
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No se subió ninguna imagen" });
     }
-    res.json({ foto_perfil: fotoBase64 });
-  });
-});
 
+    const id = req.params.id;
+    const relativePath = `/uploads/fotos/${req.file.filename}`; // ruta accesible desde frontend
 
-// Subir documento PDF
-app.post('/upload', upload.single('file'), async (req, res) => {
-  const { fileType } = req.body;
-  const { userId } = req.body; // Asegúrate de enviar el id del empleado desde frontend
-  if (!req.file) return res.status(400).json({ error: 'No se subió ningún archivo' });
-  
-  const docBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
-  
-  try {
-    await db.query('UPDATE candidatos SET Documentos=? WHERE id=?', [docBase64, userId]);
-    res.json({ message: 'Documento subido' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error subiendo documento' });
+    const query = "UPDATE candidatos SET foto_perfil = ? WHERE idCandidatos = ?";
+    db.query(query, [relativePath, id], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
+
+      res.json({ foto_perfil: relativePath });
+    });
   }
-});
+);
+app.put(
+  "/api/empresa/foto-perfil/:id",
+  authenticateToken,
+  requireRole("empresa"),
+  upload.single("foto"), // 👈 debe coincidir con frontend (formData.append("foto", archivo))
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "No se subió ninguna imagen" });
+    }
 
-// Obtener documento
-app.get('/files/:id/download', async (req, res) => {
-  const { id } = req.params;
-  try {
-    const [rows] = await db.query('SELECT Documentos FROM candidatos WHERE id=?', [id]);
-    if (rows.length === 0 || !rows[0].Documentos) return res.status(404).json({ error: 'Documento no encontrado' });
-    
-    const file = rows[0].Documentos;
-    const matches = file.match(/^data:(.+);base64,(.+)$/);
-    if (!matches) return res.status(500).json({ error: 'Formato inválido' });
+    const id = req.params.id;
+    const relativePath = `/uploads/fotos/${req.file.filename}`; // ruta accesible desde frontend
 
-    const mimeType = matches[1];
-    const fileBuffer = Buffer.from(matches[2], 'base64');
+    const query = "UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?";
+    db.query(query, [relativePath, id], (err) => {
+      if (err) return res.status(500).json({ error: err.message });
 
-    res.setHeader('Content-Type', mimeType);
-    res.setHeader('Content-Disposition', `attachment; filename=archivo.pdf`);
-    res.send(fileBuffer);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error descargando documento' });
+      res.json({ foto_perfil: relativePath });
+    });
   }
-});
+);
 
-// Eliminar documento
-app.delete('/files/:id', async (req, res) => {
-  const { id } = req.params;
-  try {
-    await db.query('UPDATE candidatos SET Documentos=NULL WHERE id=?', [id]);
-    res.json({ message: 'Documento eliminado' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Error eliminando documento' });
-  }
-});
 
 // Obtener vacantes disponibles
 app.get('/api/vacantes', authenticateToken, requireRole('empleado'), (req, res) => {
@@ -650,69 +555,6 @@ app.put('/api/empresa/perfil/:id', authenticateToken, requireRole('empresa'), (r
   });
 });
 
-// Actualizar foto de perfil de empresa
-app.put('/api/empresa/foto-perfil/:id', authenticateToken, requireRole('empresa'), (req, res) => {
-  const { id } = req.params;
-  
-  // Verificar que la empresa solo puede actualizar su propia foto
-  if (req.user.id !== parseInt(id)) {
-    return res.status(403).json({ error: 'Solo puedes actualizar tu propia foto de perfil' });
-  }
-
-  // Configurar multer específicamente para fotos de perfil de empresa
-  const profileUpload = multer({
-    storage: multer.diskStorage({
-      destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '..', 'Fotos'));
-      },
-      filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        cb(null, `empresa_${req.user.id}_profile_${uniqueSuffix}${ext}`);
-      }
-    }),
-    fileFilter: (req, file, cb) => {
-      if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
-      } else {
-        cb(new Error('Solo se permiten imágenes para foto de perfil'), false);
-      }
-    },
-    limits: { fileSize: 5 * 1024 * 1024 } // 5MB
-  }).single('foto');
-
-  profileUpload(req, res, function (err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se ha subido ninguna imagen' });
-    }
-
-    const fotoPath = `/Fotos/${req.file.filename}`;
-
-    // Usar la variable global de conectividad
-
-
-    const updateQuery = `UPDATE empresa SET foto_perfil = ? WHERE idEmpresa = ?`;
-    
-    db.query(updateQuery, [fotoPath, id], (err, result) => {
-      if (err) {
-        console.error('Error actualizando foto de perfil empresa:', err);
-        return res.status(500).json({ error: 'Error actualizando foto de perfil' });
-      }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ error: 'Empresa no encontrada' });
-      }
-      
-      res.json({ 
-        message: 'Foto de perfil actualizada exitosamente',
-        foto_perfil: fotoPath
-      });
-    });
-  });
-});
 
 // Crear vacante
 app.post('/api/empresa/vacante', authenticateToken, requireRole('empresa'), (req, res) => {
@@ -744,7 +586,7 @@ app.get('/api/empresa/vacantes/:id', authenticateToken, requireRole('empresa'), 
   }
   
   
-  const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
+const query = 'SELECT * FROM puestos ORDER BY idPuestos DESC';
   
   db.query(query, (err, results) => {
     if (err) {
@@ -806,174 +648,8 @@ app.get('/api/admin/usuarios', authenticateToken, requireRole('admin'), (req, re
   });
 });
 
-// Eliminar usuario
-app.delete('/api/admin/usuario/:id', authenticateToken, requireRole('admin'), (req, res) => {
-  const userId = req.params.id;
-  const { tipo } = req.query; // Esperamos que se pase el tipo como query parameter
-
-  if (!tipo || (tipo !== 'empleado' && tipo !== 'empresa')) {
-    return res.status(400).json({ error: 'Tipo de usuario requerido (empleado o empresa)' });
-  }
-
-  let deleteQuery;
-  let tableName;
-  let idColumn;
-
-  if (tipo === 'empleado') {
-    tableName = 'candidatos';
-    idColumn = 'idCandidatos';
-    deleteQuery = `DELETE FROM ${tableName} WHERE ${idColumn} = ?`;
-  } else if (tipo === 'empresa') {
-    tableName = 'empresa';
-    idColumn = 'idEmpresa';
-    deleteQuery = `DELETE FROM ${tableName} WHERE ${idColumn} = ?`;
-  }
-
-  db.query(deleteQuery, [userId], (err, result) => {
-    if (err) {
-      console.error('Error eliminando usuario:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    res.json({ message: 'Usuario eliminado exitosamente' });
-  });
-});
-
 // Iniciar servidor
 // === RUTAS PARA APLICACIONES ===
-
-// Obtener detalles de un usuario específico
-app.get('/api/admin/usuario/:id', authenticateToken, requireRole('admin'), (req, res) => {
-  const { id } = req.params;
-  const { tipo } = req.query;
-
-  if (!tipo || !['empleado', 'empresa'].includes(tipo)) {
-    return res.status(400).json({ error: 'Tipo de usuario requerido (empleado o empresa)' });
-  }
-
-  let query;
-  if (tipo === 'empleado') {
-    query = `
-      SELECT 
-        idCandidatos as id,
-        Nombre_Candidatos as nombre,
-        Correo_Candidatos as email,
-        Numero_Candidatos as telefono,
-        Experiencia as experiencia,
-        Documentos as documentos,
-        foto_perfil,
-        descripcion,
-        fecha_actualizacion,
-        'empleado' as tipo
-      FROM candidatos 
-      WHERE idCandidatos = ?
-    `;
-  } else {
-    query = `
-      SELECT 
-        idEmpresa as id,
-        Nombre_Empresa as nombre,
-        Correo_Empresa as email,
-        Telefono_Empresa as telefono,
-        Numero_Empresa as numero_empresa,
-        Ubicacion,
-        foto_perfil,
-        descripcion,
-        fecha_actualizacion,
-        'empresa' as tipo
-      FROM empresa 
-      WHERE idEmpresa = ?
-    `;
-  }
-
-  db.query(query, [id], (err, results) => {
-    if (err) {
-      console.error('❌ [SQL ERROR] Error obteniendo detalles del usuario:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    console.log('✅ [SQL SUCCESS] Detalles de usuario obtenidos exitosamente');
-    res.json(results[0]);
-  });
-});
-
-// Actualizar usuario
-app.put('/api/admin/usuario/:id', authenticateToken, requireRole('admin'), (req, res) => {
-  const { id } = req.params;
-  const { tipo } = req.query;
-  const updateData = req.body;
-
-  if (!tipo || !['empleado', 'empresa'].includes(tipo)) {
-    return res.status(400).json({ error: 'Tipo de usuario requerido (empleado o empresa)' });
-  }
-
-  let query;
-  let params;
-
-  if (tipo === 'empleado') {
-    query = `
-      UPDATE candidatos SET 
-        Nombre_Candidatos = ?,
-        Correo_Candidatos = ?,
-        Numero_Candidatos = ?,
-        Experiencia = ?,
-        descripcion = ?,
-        fecha_actualizacion = NOW()
-      WHERE idCandidatos = ?
-    `;
-    params = [
-      updateData.nombre,
-      updateData.email,
-      updateData.telefono,
-      updateData.experiencia,
-      updateData.descripcion,
-      id
-    ];
-  } else {
-    query = `
-      UPDATE empresa SET 
-        Nombre_Empresa = ?,
-        Correo_Empresa = ?,
-        Telefono_Empresa = ?,
-        Numero_Empresa = ?,
-        Ubicacion = ?,
-        descripcion = ?,
-        fecha_actualizacion = NOW()
-      WHERE idEmpresa = ?
-    `;
-    params = [
-      updateData.nombre,
-      updateData.email,
-      updateData.telefono,
-      updateData.numero_empresa,
-      updateData.ubicacion,
-      updateData.descripcion,
-      id
-    ];
-  }
-
-  db.query(query, params, (err, result) => {
-    if (err) {
-      console.error('❌ [SQL ERROR] Error actualizando usuario:', err);
-      return res.status(500).json({ error: 'Error interno del servidor' });
-    }
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    console.log('✅ [SQL SUCCESS] Usuario actualizado exitosamente');
-    res.json({ message: 'Usuario actualizado exitosamente' });
-  });
-});
 
 // Aplicar a una vacante
 app.post('/api/empleado/aplicar', authenticateToken, requireRole('empleado'), async (req, res) => {
@@ -1125,6 +801,7 @@ app.get('/api/empresa/aplicaciones/:id', authenticateToken, requireRole('empresa
       c.Nombre_Candidatos as candidato_nombre,
       c.Correo_Candidatos as candidato_email,
       c.Numero_Candidatos as candidato_telefono,
+      c.foto_perfil AS candidato_foto,  -- 👈 IMPORTANTE
       p.Tipo_Puesto as puesto_titulo,
       p.Salario,
       p.Ubicacion
@@ -1523,7 +1200,7 @@ app.post('/api/register/empleado', async (req, res) => {
       VALUES (?, ?, ?, ?)
     `;
 
-    db.query(insertQuery, [nombre, email, hashedPassword, 'empleado'], (err, result) => {
+    db.query(insertQuery, [nombre, email, '123456', 'empleado'], (err, result) => {
       if (err) {
         console.error('❌ Error creando empleado en DB:', err);
         return res.status(500).json({ error: 'Error creando cuenta' });
